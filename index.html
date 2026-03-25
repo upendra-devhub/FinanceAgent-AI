@@ -18,71 +18,81 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
 
-        body { background-color: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; }
+        /* Locked body scrolling - strictly 100vh */
+        body { background-color: var(--bg); color: var(--text); padding: 15px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        .container { max-width: 1000px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; width: 100%; }
+        .container { max-width: 1000px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; width: 100%; overflow: hidden; }
 
-        header { background: var(--primary); color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;}
-        
-        header h1 { font-size: 1.3rem; }
+        /* Compact Header */
+        header { background: var(--primary); color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
+        header h1 { font-size: 1.2rem; }
 
         .api-config { display: flex; gap: 10px; align-items: center; }
-        .api-config input { padding: 8px; border-radius: 4px; border: none; width: 220px; font-size: 0.9rem; outline: none;}
+        .api-config input { padding: 6px 10px; border-radius: 4px; border: none; width: 200px; font-size: 0.85rem; outline: none;}
 
-        .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        /* Top Section adjustments */
+        .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; flex-shrink: 0;}
 
-        .card { background: var(--surface); padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;}
+        .card { background: var(--surface); padding: 12px 15px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;}
         
-        h2 { font-size: 1rem; margin-bottom: 5px; color: var(--primary); }
-        p.help-text { font-size: 0.8rem; color: #64748b; margin-bottom: 10px; }
+        h2 { font-size: 0.95rem; margin-bottom: 2px; color: var(--primary); }
+        p.help-text { font-size: 0.75rem; color: #64748b; margin-bottom: 8px; }
 
-        .input-group { margin-bottom: 10px; }
-        .input-group label { display: block; font-size: 0.85rem; font-weight: bold; color: var(--text); margin-bottom: 3px; }
-        .input-group input, .input-group textarea { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; outline: none; transition: border 0.2s;}
+        /* Compact Inputs */
+        .input-group { margin-bottom: 8px; }
+        .input-group label { display: block; font-size: 0.8rem; font-weight: bold; color: var(--text); margin-bottom: 2px; }
+        .input-group input, .input-group textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; outline: none; transition: border 0.2s;}
         .input-group input:focus, .input-group textarea:focus { border-color: var(--secondary); }
-        .input-group textarea { height: 60px; resize: vertical; font-family: inherit; }
+        .input-group textarea { height: 45px; resize: none; font-family: inherit; } 
 
-        .expense-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .expense-list { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 10px; background: #f8fafc; font-size: 0.85rem; min-height: 150px; }
-        .expense-item { background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
-        .expense-item strong { color: var(--primary); font-size: 0.95rem;}
+        /* Expense List */
+        .expense-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0;}
+        .expense-list { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 8px; background: #f8fafc; font-size: 0.85rem; min-height: 0; }
+        .expense-item { background: white; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;}
+        .expense-item strong { color: var(--primary); font-size: 0.9rem;}
         .expense-details { color: #64748b; }
         
         .del-btn { color: #ef4444; background: none; border: none; cursor: pointer; font-size: 1rem; margin-left: 10px; font-weight: bold;}
 
-        .chat-container { flex: 1; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 300px;}
+        /* Chat Container - FIX APPLIED HERE: min-height set to 0 to prevent overflow */
+        .chat-container { flex: 1; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 0;}
         
-        .chat-history { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background-color: #f8fafc;}
+        .chat-history { flex: 1; padding: 15px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background-color: #f8fafc;}
         
-        .message { max-width: 80%; padding: 12px 16px; border-radius: 8px; font-size: 0.95rem; line-height: 1.4; white-space: pre-wrap;}
+        .message { max-width: 85%; padding: 12px 16px; border-radius: 8px; font-size: 0.95rem; line-height: 1.6; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .message strong { color: var(--primary); }
         .message.user { background-color: var(--user-msg); align-self: flex-end; border-bottom-right-radius: 0; color: #064e3b;}
         .message.ai { background-color: var(--ai-msg); align-self: flex-start; border-bottom-left-radius: 0; color: #334155; border: 1px solid var(--border);}
         
-        .chat-input-area { padding: 15px; background: white; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
-        
-        .chat-input-area input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 20px; font-size: 1rem; outline: none; transition: border 0.2s;}
+        .chat-input-area { padding: 12px 15px; background: white; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-shrink: 0;}
+        .chat-input-area input { flex: 1; padding: 10px 15px; border: 1px solid var(--border); border-radius: 20px; font-size: 0.95rem; outline: none; transition: border 0.2s;}
         .chat-input-area input:focus { border-color: var(--secondary); }
         
-        button { background: var(--secondary); color: white; border: none; padding: 10px 20px; font-size: 0.95rem; border-radius: 20px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; white-space: nowrap;}
+        button { background: var(--secondary); color: white; border: none; padding: 8px 18px; font-size: 0.95rem; border-radius: 20px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; white-space: nowrap;}
         button:hover { opacity: 0.9; }
         button:disabled { background: #cbd5e1; cursor: not-allowed; }
         
-        .btn-small { padding: 5px 15px; font-size: 0.85rem; border-radius: 4px; }
+        .btn-small { padding: 4px 12px; font-size: 0.8rem; border-radius: 4px; }
         .btn-cancel { background: #94a3b8; }
 
         .loader { display: none; align-self: flex-start; font-size: 0.85rem; color: #64748b; margin-left: 10px;}
 
+        /* Modal Overlay */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .modal h3 { margin-bottom: 15px; color: var(--primary); }
-        .modal label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: var(--text); font-weight: bold;}
-        .modal input, .modal select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; outline: none;}
+        .modal { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal h3 { margin-bottom: 12px; color: var(--primary); font-size: 1.1rem;}
+        .modal label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text); font-weight: bold;}
+        .modal input, .modal select { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; outline: none;}
         .modal input:focus, .modal select:focus { border-color: var(--secondary); }
-        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 5px; }
         
-        .footer-tools { text-align: center; padding: 10px; margin-top: 10px; }
-        .btn-reset { background: transparent; color: #94a3b8; border: 1px solid #cbd5e1; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .footer-tools { text-align: center; padding: 8px 0 0 0; flex-shrink: 0; }
+        .btn-reset { background: transparent; color: #94a3b8; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
         .btn-reset:hover { background: #fee2e2; color: #ef4444; border-color: #f87171;}
+
+        /* --- MAGIC SCROLLBAR HIDING CSS --- */
+        .chat-history::-webkit-scrollbar, .expense-list::-webkit-scrollbar { display: none; }
+        .chat-history, .expense-list { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
@@ -91,7 +101,7 @@
     <header>
         <h1>FinanceAgent AI 💸</h1>
         <div class="api-config">
-            <label for="apiKey" style="font-size: 0.85rem;">Gemini API Key:</label>
+            <label for="apiKey" style="font-size: 0.8rem;">Gemini API Key:</label>
             <input type="password" id="apiKey" placeholder="Paste key to auto-save...">
         </div>
     </header>
@@ -99,22 +109,21 @@
     <div class="top-section">
         <div class="card">
             <h2>1. Your Big Picture</h2>
-            <p class="help-text" style="margin-bottom: 15px;">We auto-save these as you type.</p>
+            <p class="help-text">We auto-save these as you type.</p>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 4px;">
                 <div class="input-group">
-                    <label>Monthly Income (₹)</label>
-                    <input type="number" id="bpIncome" placeholder="e.g., 50000">
+                    <label>Income (₹)</label>
+                    <input type="number" id="bpIncome" placeholder="50000">
                 </div>
                 <div class="input-group">
-                    <label>Saving Goal (₹)</label>
-                    <input type="number" id="bpGoal" placeholder="e.g., 10000">
+                    <label>Goal (₹)</label>
+                    <input type="number" id="bpGoal" placeholder="10000">
                 </div>
-            </div>
-
-            <div class="input-group">
-                <label>Current Savings (₹)</label>
-                <input type="number" id="bpSavings" placeholder="e.g., 100000">
+                <div class="input-group">
+                    <label>Savings (₹)</label>
+                    <input type="number" id="bpSavings" placeholder="100000">
+                </div>
             </div>
 
             <div class="input-group" style="margin-bottom: 0;">
@@ -132,7 +141,7 @@
                 <button class="btn-small" onclick="openModal()">+ Add Expense</button>
             </div>
             <div class="expense-list" id="expenseList">
-                <p style="color: #94a3b8; text-align: center; margin-top: 30px; font-style: italic;">No expenses logged yet.</p>
+                <p style="color: #94a3b8; text-align: center; margin-top: 15px; font-style: italic; font-size: 0.8rem;">No expenses logged yet.</p>
             </div>
         </div>
     </div>
@@ -254,7 +263,7 @@
         listDiv.innerHTML = ""; 
 
         if (expenses.length === 0) {
-            listDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin-top: 30px; font-style: italic;">No expenses logged yet.</p>';
+            listDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin-top: 15px; font-style: italic; font-size: 0.8rem;">No expenses logged yet.</p>';
             return;
         }
 
@@ -270,7 +279,7 @@
                     <div class="expense-details">
                         <span style="font-weight: bold; color: var(--text);">${shortDate}</span> | 
                         <span>${exp.vendor}</span> 
-                        <div style="font-size: 0.75rem; margin-top: 2px;">${exp.category}</div>
+                        <div style="font-size: 0.7rem; margin-top: 2px;">${exp.category}</div>
                     </div>
                     <div style="display: flex; align-items: center;">
                         <strong>₹${exp.amount}</strong>
@@ -290,7 +299,13 @@
         const chatBox = document.getElementById('chatHistoryBox');
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${sender}`;
-        msgDiv.innerText = text;
+        
+        let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formattedText = formattedText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        formattedText = formattedText.replace(/\n/g, '<br>');
+        
+        msgDiv.innerHTML = formattedText; 
+        
         chatBox.appendChild(msgDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
@@ -345,7 +360,6 @@ ${bpMandatory || 'None provided'}`.trim();
             expensesForAI = expenses.map(e => `Date: ${e.date}, Vendor: ${e.vendor}, Category: ${e.category}, Amount: ₹${e.amount}`).join('\n');
         }
 
-        // --- UPDATED SYSTEM INSTRUCTIONS FOR DOMAIN RESTRICTION AND LENGTH ---
         const systemInstruction = `You are FinanceAgent AI, a specialized personal finance advisor for budgeting, saving, and investment.
 CRITICAL RULES:
 1. DOMAIN EXPERTISE ONLY: You MUST ONLY answer questions related to personal finance. If the user asks about coding, history, cooking, general chatting, or any non-finance topic, politely decline and remind them you are a dedicated finance coach.
