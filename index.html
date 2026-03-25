@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceAgent AI</title>
+    <style>
+        :root {
+            --primary: #1e293b;
+            --secondary: #10b981;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #334155;
+            --user-msg: #d1fae5;
+            --ai-msg: #f1f5f9;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        body { background-color: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1000px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; width: 100%; }
+
+        header { background: var(--primary); color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;}
+        
+        header h1 { font-size: 1.3rem; }
+
+        .api-config { display: flex; gap: 10px; align-items: center; }
+        .api-config input { padding: 8px; border-radius: 4px; border: none; width: 220px; font-size: 0.9rem; outline: none;}
+
+        .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+
+        .card { background: var(--surface); padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;}
+        
+        h2 { font-size: 1rem; margin-bottom: 5px; color: var(--primary); }
+        p.help-text { font-size: 0.8rem; color: #64748b; margin-bottom: 10px; }
+
+        .input-group { margin-bottom: 10px; }
+        .input-group label { display: block; font-size: 0.85rem; font-weight: bold; color: var(--text); margin-bottom: 3px; }
+        .input-group input, .input-group textarea { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; outline: none; transition: border 0.2s;}
+        .input-group input:focus, .input-group textarea:focus { border-color: var(--secondary); }
+        .input-group textarea { height: 60px; resize: vertical; font-family: inherit; }
+
+        .expense-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .expense-list { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 10px; background: #f8fafc; font-size: 0.85rem; min-height: 150px; }
+        .expense-item { background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+        .expense-item strong { color: var(--primary); font-size: 0.95rem;}
+        .expense-details { color: #64748b; }
+        
+        .del-btn { color: #ef4444; background: none; border: none; cursor: pointer; font-size: 1rem; margin-left: 10px; font-weight: bold;}
+
+        .chat-container { flex: 1; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 300px;}
+        
+        .chat-history { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background-color: #f8fafc;}
+        
+        .message { max-width: 80%; padding: 12px 16px; border-radius: 8px; font-size: 0.95rem; line-height: 1.4; white-space: pre-wrap;}
+        .message.user { background-color: var(--user-msg); align-self: flex-end; border-bottom-right-radius: 0; color: #064e3b;}
+        .message.ai { background-color: var(--ai-msg); align-self: flex-start; border-bottom-left-radius: 0; color: #334155; border: 1px solid var(--border);}
+        
+        .chat-input-area { padding: 15px; background: white; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+        
+        .chat-input-area input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 20px; font-size: 1rem; outline: none; transition: border 0.2s;}
+        .chat-input-area input:focus { border-color: var(--secondary); }
+        
+        button { background: var(--secondary); color: white; border: none; padding: 10px 20px; font-size: 0.95rem; border-radius: 20px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; white-space: nowrap;}
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+        
+        .btn-small { padding: 5px 15px; font-size: 0.85rem; border-radius: 4px; }
+        .btn-cancel { background: #94a3b8; }
+
+        .loader { display: none; align-self: flex-start; font-size: 0.85rem; color: #64748b; margin-left: 10px;}
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal h3 { margin-bottom: 15px; color: var(--primary); }
+        .modal label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: var(--text); font-weight: bold;}
+        .modal input, .modal select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; outline: none;}
+        .modal input:focus, .modal select:focus { border-color: var(--secondary); }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+        
+        .footer-tools { text-align: center; padding: 10px; margin-top: 10px; }
+        .btn-reset { background: transparent; color: #94a3b8; border: 1px solid #cbd5e1; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .btn-reset:hover { background: #fee2e2; color: #ef4444; border-color: #f87171;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>FinanceAgent AI 💸</h1>
+        <div class="api-config">
+            <label for="apiKey" style="font-size: 0.85rem;">Gemini API Key:</label>
+            <input type="password" id="apiKey" placeholder="Paste key to auto-save...">
+        </div>
+    </header>
+
+    <div class="top-section">
+        <div class="card">
+            <h2>1. Your Big Picture</h2>
+            <p class="help-text" style="margin-bottom: 15px;">We auto-save these as you type.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="input-group">
+                    <label>Monthly Income (₹)</label>
+                    <input type="number" id="bpIncome" placeholder="e.g., 50000">
+                </div>
+                <div class="input-group">
+                    <label>Saving Goal (₹)</label>
+                    <input type="number" id="bpGoal" placeholder="e.g., 10000">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Current Savings (₹)</label>
+                <input type="number" id="bpSavings" placeholder="e.g., 100000">
+            </div>
+
+            <div class="input-group" style="margin-bottom: 0;">
+                <label>Mandatory Expenses & EMIs</label>
+                <textarea id="bpMandatory" placeholder="e.g., Rent: 15000&#10;Bike EMI: 3000"></textarea>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="expense-header">
+                <div>
+                    <h2>2. Logged Expenses</h2>
+                    <p class="help-text" style="margin-bottom: 0;">Saved locally in your browser.</p>
+                </div>
+                <button class="btn-small" onclick="openModal()">+ Add Expense</button>
+            </div>
+            <div class="expense-list" id="expenseList">
+                <p style="color: #94a3b8; text-align: center; margin-top: 30px; font-style: italic;">No expenses logged yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-history" id="chatHistoryBox">
+            </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Ask about your budget, savings, or spending... (Press Enter)" onkeypress="handleKeyPress(event)">
+            <button id="sendBtn" onclick="sendMessage()">Send</button>
+            <div id="loader" class="loader">Thinking...</div>
+        </div>
+    </div>
+    
+    <div class="footer-tools">
+        <button class="btn-reset" onclick="clearAllData()">🗑️ Reset All My Data</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="expenseModal">
+    <div class="modal">
+        <h3>Log New Expense</h3>
+        <label>Date</label>
+        <input type="date" id="expDate">
+        <label>Category</label>
+        <select id="expCategory">
+            <option value="Groceries">Groceries</option>
+            <option value="Dining Out / Food Delivery">Dining Out / Food Delivery</option>
+            <option value="Utilities / Bills">Utilities / Bills</option>
+            <option value="Transport / Fuel">Transport / Fuel</option>
+            <option value="Shopping / Clothing">Shopping / Clothing</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Health / Medical">Health / Medical</option>
+            <option value="Other">Other</option>
+        </select>
+        <label>Where did you spend it? (Vendor)</label>
+        <input type="text" id="expVendor" placeholder="e.g., D-Mart, Swiggy, Uber">
+        <label>Amount (₹)</label>
+        <input type="number" id="expAmount" placeholder="e.g., 1500">
+        <div class="modal-buttons">
+            <button class="btn-small btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-small" onclick="saveExpense()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- GLOBAL VARIABLES ---
+    let conversationHistory = [];
+    let expenses = []; 
+    const CHAT_DEFAULT_MSG = "Hi! I'm FinanceAgent AI, your personal finance advisor. I can help with budgeting, saving, and investments based on your numbers above. What would you like to look at today?";
+
+    // --- 1. INITIALIZE & LOAD DATA ON STARTUP ---
+    window.onload = function() {
+        if(localStorage.getItem('fin_apiKey')) document.getElementById('apiKey').value = localStorage.getItem('fin_apiKey');
+        if(localStorage.getItem('fin_bpIncome')) document.getElementById('bpIncome').value = localStorage.getItem('fin_bpIncome');
+        if(localStorage.getItem('fin_bpGoal')) document.getElementById('bpGoal').value = localStorage.getItem('fin_bpGoal');
+        if(localStorage.getItem('fin_bpSavings')) document.getElementById('bpSavings').value = localStorage.getItem('fin_bpSavings');
+        if(localStorage.getItem('fin_bpMandatory')) document.getElementById('bpMandatory').value = localStorage.getItem('fin_bpMandatory');
+
+        const savedExpenses = localStorage.getItem('fin_expenses');
+        if (savedExpenses) {
+            expenses = JSON.parse(savedExpenses);
+        }
+        renderExpenseList();
+
+        const savedChat = localStorage.getItem('fin_chat');
+        if (savedChat) {
+            conversationHistory = JSON.parse(savedChat);
+            renderChatHistory();
+        } else {
+            appendMessageUI('ai', CHAT_DEFAULT_MSG);
+        }
+
+        setupAutoSaveListeners();
+    };
+
+    // --- 2. AUTO-SAVE LISTENERS ---
+    function setupAutoSaveListeners() {
+        document.getElementById('apiKey').addEventListener('input', (e) => localStorage.setItem('fin_apiKey', e.target.value));
+        document.getElementById('bpIncome').addEventListener('input', (e) => localStorage.setItem('fin_bpIncome', e.target.value));
+        document.getElementById('bpGoal').addEventListener('input', (e) => localStorage.setItem('fin_bpGoal', e.target.value));
+        document.getElementById('bpSavings').addEventListener('input', (e) => localStorage.setItem('fin_bpSavings', e.target.value));
+        document.getElementById('bpMandatory').addEventListener('input', (e) => localStorage.setItem('fin_bpMandatory', e.target.value));
+    }
+
+    // --- 3. EXPENSE TRACKER LOGIC ---
+    document.getElementById('expDate').valueAsDate = new Date();
+
+    function openModal() { document.getElementById('expenseModal').style.display = 'flex'; }
+    function closeModal() {
+        document.getElementById('expenseModal').style.display = 'none';
+        document.getElementById('expVendor').value = "";
+        document.getElementById('expAmount').value = "";
+    }
+
+    function saveExpense() {
+        const date = document.getElementById('expDate').value;
+        const category = document.getElementById('expCategory').value;
+        const vendor = document.getElementById('expVendor').value.trim();
+        const amount = document.getElementById('expAmount').value.trim();
+
+        if (!date || !vendor || !amount) { alert("Please fill in all fields."); return; }
+
+        expenses.push({ id: Date.now(), date, category, vendor, amount }); 
+        localStorage.setItem('fin_expenses', JSON.stringify(expenses));
+        renderExpenseList();
+        closeModal();
+    }
+
+    function deleteExpense(id) {
+        expenses = expenses.filter(exp => exp.id !== id);
+        localStorage.setItem('fin_expenses', JSON.stringify(expenses)); 
+        renderExpenseList();
+    }
+
+    function renderExpenseList() {
+        const listDiv = document.getElementById('expenseList');
+        listDiv.innerHTML = ""; 
+
+        if (expenses.length === 0) {
+            listDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin-top: 30px; font-style: italic;">No expenses logged yet.</p>';
+            return;
+        }
+
+        for (let i = expenses.length - 1; i >= 0; i--) {
+            const exp = expenses[i];
+            const dateObj = new Date(exp.date);
+            const shortDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'expense-item';
+            itemDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="expense-details">
+                        <span style="font-weight: bold; color: var(--text);">${shortDate}</span> | 
+                        <span>${exp.vendor}</span> 
+                        <div style="font-size: 0.75rem; margin-top: 2px;">${exp.category}</div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <strong>₹${exp.amount}</strong>
+                        <button class="del-btn" onclick="deleteExpense(${exp.id})" title="Delete">×</button>
+                    </div>
+                </div>
+            `;
+            listDiv.appendChild(itemDiv);
+        }
+    }
+
+
+    // --- 4. CHAT & AI LOGIC ---
+    function handleKeyPress(event) { if (event.key === 'Enter') { sendMessage(); } }
+
+    function appendMessageUI(sender, text) {
+        const chatBox = document.getElementById('chatHistoryBox');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${sender}`;
+        msgDiv.innerText = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function renderChatHistory() {
+        const chatBox = document.getElementById('chatHistoryBox');
+        chatBox.innerHTML = ""; 
+        
+        if (conversationHistory.length === 0) {
+            appendMessageUI('ai', CHAT_DEFAULT_MSG);
+            return;
+        }
+
+        conversationHistory.forEach(msg => {
+            const sender = msg.role === 'user' ? 'user' : 'ai';
+            const text = msg.parts[0].text;
+            appendMessageUI(sender, text);
+        });
+    }
+
+    async function sendMessage() {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const bpIncome = document.getElementById('bpIncome').value.trim();
+        const bpGoal = document.getElementById('bpGoal').value.trim();
+        const bpSavings = document.getElementById('bpSavings').value.trim();
+        const bpMandatory = document.getElementById('bpMandatory').value.trim();
+        const inputField = document.getElementById('chatInput');
+        const userText = inputField.value.trim();
+        const btn = document.getElementById('sendBtn');
+        const loader = document.getElementById('loader');
+
+        if (!apiKey) { alert("Please enter your API key at the top right."); return; }
+        if (!userText) { return; }
+
+        appendMessageUI('user', userText);
+        inputField.value = "";
+        btn.disabled = true;
+        loader.style.display = 'block';
+
+        conversationHistory.push({ role: "user", parts: [{ text: userText }] });
+        localStorage.setItem('fin_chat', JSON.stringify(conversationHistory));
+
+        const masterDataText = `
+Monthly Income: ₹${bpIncome || 'Not provided'}
+Monthly Saving Goal: ₹${bpGoal || 'Not provided'}
+Current Savings: ₹${bpSavings || 'Not provided'}
+Mandatory Expenses & EMIs:
+${bpMandatory || 'None provided'}`.trim();
+
+        let expensesForAI = "No expenses logged yet.";
+        if (expenses.length > 0) {
+            expensesForAI = expenses.map(e => `Date: ${e.date}, Vendor: ${e.vendor}, Category: ${e.category}, Amount: ₹${e.amount}`).join('\n');
+        }
+
+        // --- UPDATED SYSTEM INSTRUCTIONS FOR DOMAIN RESTRICTION AND LENGTH ---
+        const systemInstruction = `You are FinanceAgent AI, a specialized personal finance advisor for budgeting, saving, and investment.
+CRITICAL RULES:
+1. DOMAIN EXPERTISE ONLY: You MUST ONLY answer questions related to personal finance. If the user asks about coding, history, cooking, general chatting, or any non-finance topic, politely decline and remind them you are a dedicated finance coach.
+2. CRISP & ACTIONABLE: Keep your answers crisp and clear. Maximum length is 20 lines. Use formatting like bullet points or short paragraphs for readability. Do not output giant walls of text.
+3. TONE: Give the bottom line up front. Speak in normal, plain English. Avoid complex jargon unless asked to explain it.
+4. Reference the user's specific numbers and logged expenses below to provide accurate, personalized calculations and advice.
+
+--- USER'S BIG PICTURE (INCOME & GOALS) ---
+${masterDataText}
+
+--- LOGGED EXPENSES ---
+${expensesForAI}`;
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    system_instruction: { parts: [{ text: systemInstruction }] },
+                    contents: conversationHistory
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) { throw new Error(data.error?.message || "Unknown API Error"); }
+
+            const aiText = data.candidates[0].content.parts[0].text;
+            
+            appendMessageUI('ai', aiText);
+
+            conversationHistory.push({ role: "model", parts: [{ text: aiText }] });
+            localStorage.setItem('fin_chat', JSON.stringify(conversationHistory));
+
+        } catch (error) {
+            appendMessageUI('ai', `Error: ${error.message}`);
+            conversationHistory.pop(); 
+            localStorage.setItem('fin_chat', JSON.stringify(conversationHistory));
+        } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+            inputField.focus();
+        }
+    }
+
+    // --- 5. RESET DATA TOOL ---
+    function clearAllData() {
+        if(confirm("Are you sure you want to delete all your saved numbers, expenses, and chat history? This cannot be undone.")) {
+            localStorage.removeItem('fin_bpIncome');
+            localStorage.removeItem('fin_bpGoal');
+            localStorage.removeItem('fin_bpSavings');
+            localStorage.removeItem('fin_bpMandatory');
+            localStorage.removeItem('fin_expenses');
+            localStorage.removeItem('fin_chat');
+            location.reload(); 
+        }
+    }
+</script>
+
+</body>
+</html>
