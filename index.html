@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinanceAgent AI</title>
+    <title>FinanceAgent AI Dashboard</title>
     <style>
         :root {
             --primary: #1e293b;
@@ -18,27 +18,32 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
 
-        /* Locked body scrolling - strictly 100vh */
+        /* Locked body scrolling */
         body { background-color: var(--bg); color: var(--text); padding: 15px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        .container { max-width: 1000px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; width: 100%; overflow: hidden; }
+        /* Widened container for side-by-side layout */
+        .container { max-width: 1200px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; width: 100%; overflow: hidden; }
 
         /* Compact Header */
-        header { background: var(--primary); color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
+        header { background: var(--primary); color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
         header h1 { font-size: 1.2rem; }
 
         .api-config { display: flex; gap: 10px; align-items: center; }
         .api-config input { padding: 6px 10px; border-radius: 4px; border: none; width: 200px; font-size: 0.85rem; outline: none;}
 
-        /* Top Section adjustments */
-        .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; flex-shrink: 0;}
+        /* --- THE 55/45 SIDE-BY-SIDE DASHBOARD LAYOUT --- */
+        .dashboard-wrapper { display: grid; grid-template-columns: 55fr 45fr; gap: 15px; flex: 1; min-height: 0; overflow: hidden; }
+        
+        .left-panel { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
 
-        .card { background: var(--surface); padding: 12px 15px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;}
+        /* Cards */
+        .card { background: var(--surface); padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; flex-shrink: 0;}
+        .card.expense-card { flex: 1; min-height: 0; } /* Forces expense card to take remaining left-column height */
         
         h2 { font-size: 0.95rem; margin-bottom: 2px; color: var(--primary); }
         p.help-text { font-size: 0.75rem; color: #64748b; margin-bottom: 8px; }
 
-        /* Compact Inputs */
+        /* Inputs */
         .input-group { margin-bottom: 8px; }
         .input-group label { display: block; font-size: 0.8rem; font-weight: bold; color: var(--text); margin-bottom: 2px; }
         .input-group input, .input-group textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; outline: none; transition: border 0.2s;}
@@ -51,11 +56,10 @@
         .expense-item { background: white; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;}
         .expense-item strong { color: var(--primary); font-size: 0.9rem;}
         .expense-details { color: #64748b; }
-        
         .del-btn { color: #ef4444; background: none; border: none; cursor: pointer; font-size: 1rem; margin-left: 10px; font-weight: bold;}
 
-        /* Chat Container - FIX APPLIED HERE: min-height set to 0 to prevent overflow */
-        .chat-container { flex: 1; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 0;}
+        /* Chat Container */
+        .chat-container { flex: 1; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 0; height: 100%;}
         
         .chat-history { flex: 1; padding: 15px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background-color: #f8fafc;}
         
@@ -86,13 +90,21 @@
         .modal input:focus, .modal select:focus { border-color: var(--secondary); }
         .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 5px; }
         
-        .footer-tools { text-align: center; padding: 8px 0 0 0; flex-shrink: 0; }
-        .btn-reset { background: transparent; color: #94a3b8; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+        .footer-tools { text-align: center; padding: 10px 0 0 0; flex-shrink: 0; }
+        .btn-reset { background: transparent; color: #94a3b8; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: 0.2s;}
         .btn-reset:hover { background: #fee2e2; color: #ef4444; border-color: #f87171;}
 
-        /* --- MAGIC SCROLLBAR HIDING CSS --- */
+        /* Invisible Scrollbars */
         .chat-history::-webkit-scrollbar, .expense-list::-webkit-scrollbar { display: none; }
         .chat-history, .expense-list { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Responsive fallback for smaller screens */
+        @media (max-width: 800px) {
+            .dashboard-wrapper { grid-template-columns: 1fr; overflow-y: auto; }
+            body { overflow-y: auto; }
+            .chat-container { min-height: 500px; }
+            .card.expense-card { min-height: 300px; }
+        }
     </style>
 </head>
 <body>
@@ -106,54 +118,58 @@
         </div>
     </header>
 
-    <div class="top-section">
-        <div class="card">
-            <h2>1. Your Big Picture</h2>
-            <p class="help-text">We auto-save these as you type.</p>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 4px;">
-                <div class="input-group">
-                    <label>Income (₹)</label>
-                    <input type="number" id="bpIncome" placeholder="50000">
+    <div class="dashboard-wrapper">
+        
+        <div class="left-panel">
+            <div class="card">
+                <h2>1. Your Big Picture</h2>
+                <p class="help-text">We auto-save these as you type.</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 4px;">
+                    <div class="input-group">
+                        <label>Income (₹)</label>
+                        <input type="number" id="bpIncome" placeholder="50000">
+                    </div>
+                    <div class="input-group">
+                        <label>Goal (₹)</label>
+                        <input type="number" id="bpGoal" placeholder="10000">
+                    </div>
+                    <div class="input-group">
+                        <label>Savings (₹)</label>
+                        <input type="number" id="bpSavings" placeholder="100000">
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label>Goal (₹)</label>
-                    <input type="number" id="bpGoal" placeholder="10000">
-                </div>
-                <div class="input-group">
-                    <label>Savings (₹)</label>
-                    <input type="number" id="bpSavings" placeholder="100000">
+
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label>Mandatory Expenses & EMIs</label>
+                    <textarea id="bpMandatory" placeholder="e.g., Rent: 15000&#10;Bike EMI: 3000"></textarea>
                 </div>
             </div>
 
-            <div class="input-group" style="margin-bottom: 0;">
-                <label>Mandatory Expenses & EMIs</label>
-                <textarea id="bpMandatory" placeholder="e.g., Rent: 15000&#10;Bike EMI: 3000"></textarea>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="expense-header">
-                <div>
-                    <h2>2. Logged Expenses</h2>
-                    <p class="help-text" style="margin-bottom: 0;">Saved locally in your browser.</p>
+            <div class="card expense-card">
+                <div class="expense-header">
+                    <div>
+                        <h2>2. Logged Expenses</h2>
+                        <p class="help-text" style="margin-bottom: 0;">Saved locally in your browser.</p>
+                    </div>
+                    <button class="btn-small" onclick="openModal()">+ Add Expense</button>
                 </div>
-                <button class="btn-small" onclick="openModal()">+ Add Expense</button>
-            </div>
-            <div class="expense-list" id="expenseList">
-                <p style="color: #94a3b8; text-align: center; margin-top: 15px; font-style: italic; font-size: 0.8rem;">No expenses logged yet.</p>
+                <div class="expense-list" id="expenseList">
+                    <p style="color: #94a3b8; text-align: center; margin-top: 15px; font-style: italic; font-size: 0.8rem;">No expenses logged yet.</p>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="chat-container">
-        <div class="chat-history" id="chatHistoryBox">
+        <div class="chat-container">
+            <div class="chat-history" id="chatHistoryBox">
+                </div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Ask about your budget, savings, or spending... (Press Enter)" onkeypress="handleKeyPress(event)">
+                <button id="sendBtn" onclick="sendMessage()">Send</button>
+                <div id="loader" class="loader">Thinking...</div>
             </div>
-        <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="Ask about your budget, savings, or spending... (Press Enter)" onkeypress="handleKeyPress(event)">
-            <button id="sendBtn" onclick="sendMessage()">Send</button>
-            <div id="loader" class="loader">Thinking...</div>
         </div>
+
     </div>
     
     <div class="footer-tools">
