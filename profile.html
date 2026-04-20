@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Financial Profile</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="profile-page">
+    <div class="profile-shell">
+        <header class="topbar">
+            <div class="brand-block">
+                <p class="eyebrow">Personal Finance Advisor</p>
+                <h1>Financial Profile</h1>
+            </div>
+
+            <div class="topbar-actions">
+                <a class="button button-secondary" href="./index.html">Back to Dashboard</a>
+            </div>
+        </header>
+
+        <main class="profile-layout">
+            <section class="panel profile-form-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Profile</h2>
+                        <p>Keep your financial details together so the dashboard and advisor stay profile-aware.</p>
+                    </div>
+                </div>
+
+                <div class="content-section panel-scroll">
+                    <div class="subsection-heading">
+                        <div>
+                            <h3>Your Financial Profile</h3>
+                            <p>These values power affordability checks, savings analysis, and goal-aware advice.</p>
+                        </div>
+                    </div>
+
+                    <form id="profileForm" class="profile-form">
+                        <label class="field">
+                            <span>Monthly Income</span>
+                            <input type="number" id="profileIncome" min="0" step="0.01" required>
+                            <small class="field-error" id="incomeError"></small>
+                        </label>
+
+                        <label class="field">
+                            <span>Current Savings</span>
+                            <input type="number" id="profileSavings" min="0" step="0.01" required>
+                            <small class="field-error" id="savingsError"></small>
+                        </label>
+
+                        <label class="field">
+                            <span>Monthly Savings Goal</span>
+                            <input type="number" id="profileGoal" min="0" step="0.01" required>
+                            <small class="field-error" id="goalError"></small>
+                        </label>
+
+                        <label class="field">
+                            <span>Mandatory Monthly Expenses</span>
+                            <input type="number" id="profileMandatory" min="0" step="0.01" required>
+                            <small class="field-error" id="mandatoryError"></small>
+                        </label>
+
+                        <div class="profile-form-actions">
+                            <button type="submit" class="button">Save Profile</button>
+                            <a class="button button-ghost" href="./index.html">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="profileStatus" class="profile-status" aria-live="polite"></div>
+            </section>
+
+            <aside class="panel profile-info-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>What This Changes</h2>
+                        <p>The advisor combines your profile with your expenses and the hidden reference baseline.</p>
+                    </div>
+                </div>
+
+                <div class="profile-info-list">
+                    <article class="metric-row">
+                        <div>
+                            <div class="metric-name">Budgeting</div>
+                            <div class="metric-detail">Income and mandatory costs shape whether current spending is affordable.</div>
+                        </div>
+                    </article>
+                    <article class="metric-row">
+                        <div>
+                            <div class="metric-name">Savings</div>
+                            <div class="metric-detail">Your monthly goal and current savings affect savings-rate and buffer guidance.</div>
+                        </div>
+                    </article>
+                    <article class="metric-row">
+                        <div>
+                            <div class="metric-name">Alerts</div>
+                            <div class="metric-detail">The chat can warn when spending rises above both the learned baseline and your own financial limits.</div>
+                        </div>
+                    </article>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script type="module" src="./js/profilePage.js"></script>
+</body>
+</html>
