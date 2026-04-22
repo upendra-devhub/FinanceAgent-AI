@@ -95,5 +95,11 @@ export function clearUploadedDataset() {
 }
 
 export function clearAllStoredData() {
-    Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
+    try {
+        localStorage.clear();
+        sessionStorage.clear();
+    } catch (error) {
+        console.warn("Could not clear browser storage completely.", error);
+        Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
+    }
 }

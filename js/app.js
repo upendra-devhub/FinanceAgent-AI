@@ -26,7 +26,6 @@ import {
     renderCategoryComparison,
     renderChatHistory,
     renderExpenseList,
-    renderMonthlyComparison,
     renderUserCards,
     setLoadingState
 } from "./uiRenderer.js";
@@ -50,7 +49,6 @@ const elements = {
     profileDropdown: document.getElementById("profileDropdown"),
     userCards: document.getElementById("userCards"),
     categoryComparison: document.getElementById("categoryComparison"),
-    monthlyComparison: document.getElementById("monthlyComparison"),
     expenseList: document.getElementById("expenseList"),
     expenseFileInput: document.getElementById("expenseFileInput"),
     expenseModal: document.getElementById("expenseModal"),
@@ -88,6 +86,10 @@ function currentProfileValues() {
 }
 
 function publishAutomatedInsights(force = false) {
+    if (!state.userStats?.metadata.hasRecords) {
+        return;
+    }
+
     const digest = buildAutomatedInsightDigest({
         baseline: state.baseline,
         userStats: state.userStats
@@ -119,7 +121,6 @@ function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {})
 
     renderUserCards(elements.userCards, state.userStats, state.comparisonInsights);
     renderCategoryComparison(elements.categoryComparison, state.comparisonInsights.categoryComparisons);
-    renderMonthlyComparison(elements.monthlyComparison, state.userStats, state.comparisonInsights);
     renderExpenseList(elements.expenseList, state.manualExpenses);
 
     const categories = [
@@ -361,13 +362,24 @@ async function sendMessage() {
 }
 
 function clearAllData() {
-    const confirmed = window.confirm("Delete all saved expenses, chat history, financial profile values, and API key?");
+    const confirmed = window.confirm("Delete all saved expenses, chat history, financial profile values, API key, cached insights, and browser UI state?");
     if (!confirmed) {
         return;
     }
 
     clearAllStoredData();
-    window.location.reload();
+    state.manualExpenses = [];
+    state.conversation = [];
+    state.lastInsightSignature = "";
+    state.userStats = null;
+    state.comparisonInsights = null;
+
+    elements.apiKey.value = "";
+    elements.expenseFileInput.value = "";
+    closeExpenseModal();
+    setProfileMenuOpen(false);
+    renderChatHistory(elements.chatHistoryBox, state.conversation, DEFAULT_CHAT_MESSAGE);
+    rebuildAnalysis({ publishInsights: false });
 }
 
 function bindEvents() {

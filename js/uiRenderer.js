@@ -11,6 +11,69 @@ function emptyState(message) {
     return `<div class="empty-state">${escapeHtml(message)}</div>`;
 }
 
+function hashString(value = "") {
+    return String(value).split("").reduce((hash, char) => hash + char.charCodeAt(0), 0);
+}
+
+function pickMessage(messages, key) {
+    return messages[hashString(key) % messages.length];
+}
+
+function calculateAboveExpectedPercent(item) {
+    const expectedCeiling = item.baselineQ3Share || item.baselineMedianShare;
+    if (expectedCeiling > 0 && item.userShare > expectedCeiling) {
+        return (item.userShare - expectedCeiling) / expectedCeiling;
+    }
+
+    return Math.max(item.deltaFromMedian, 0);
+}
+
+function getCategoryStatus(item) {
+    if (item.status === "well-above" || item.status === "above") {
+        const overage = calculateAboveExpectedPercent(item);
+        const warningMessages = [
+            `You're spending ${formatPercent(overage)} more than expected`,
+            `${formatPercent(overage)} above expected range`,
+            `Running ${formatPercent(overage)} hot against baseline`,
+            `${formatPercent(overage)} higher than your learned baseline`
+        ];
+
+        return {
+            tone: "warning",
+            message: overage > 0 ? pickMessage(warningMessages, item.name) : "Above normal spending"
+        };
+    }
+
+    if (item.status === "below") {
+        return {
+            tone: "positive",
+            message: pickMessage([
+                "Doing great",
+                "Well controlled",
+                "Below expected range",
+                "Nice and steady"
+            ], item.name)
+        };
+    }
+
+    if (item.status === "new-user-category") {
+        return {
+            tone: "neutral",
+            message: "New category to watch"
+        };
+    }
+
+    return {
+        tone: "neutral",
+        message: pickMessage([
+            "On par with expected spending",
+            "Pretty normal this month",
+            "Around your usual range",
+            "Steady and balanced"
+        ], item.name)
+    };
+}
+
 export function renderProfileSummary(element, userStats) {
     if (!userStats.profile.isComplete) {
         element.innerHTML = `
@@ -94,48 +157,23 @@ export function renderCategoryComparison(element, comparisons) {
         return;
     }
 
-    element.innerHTML = rows.map((item) => `
-        <article class="metric-row">
+    element.innerHTML = rows.map((item) => {
+        const categoryStatus = getCategoryStatus(item);
+
+        return `
+        <article class="metric-row metric-row-${categoryStatus.tone}">
             <div>
                 <div class="metric-name">${escapeHtml(item.name)}</div>
-                <div class="metric-detail">
-                    ${item.status === "well-above" || item.status === "above"
-                        ? `Higher than baseline by ${formatPercent(Math.abs(item.deltaFromMedian))}`
-                        : item.status === "below"
-                            ? `Lower than baseline by ${formatPercent(Math.abs(item.deltaFromMedian))}`
-                            : item.status === "new-user-category"
-                                ? "No strong baseline match yet"
-                                : "Within the learned baseline range"}
-                </div>
-                <div class="bar-track"><div class="bar-fill" style="width:${Math.max(item.userShare * 100, 4)}%"></div></div>
+                <div class="metric-detail">${escapeHtml(categoryStatus.message)}</div>
+                <div class="bar-track"><div class="bar-fill" style="width:${Math.min(Math.max(item.userShare * 100, 4), 100)}%"></div></div>
             </div>
-            <div class="metric-name">${formatPercent(item.userShare)}</div>
-        </article>
-    `).join("");
-}
-
-export function renderMonthlyComparison(element, userStats, ruleInsights) {
-    const latestMonths = userStats.monthly.trend.slice(-4).reverse();
-
-    if (!latestMonths.length) {
-        element.innerHTML = emptyState("Add dated user expenses to see your recent spending pattern.");
-        return;
-    }
-
-    const monthlyAlert = ruleInsights.alerts.find((item) => item.id === "user-month-above-baseline" || item.id === "month-over-month-growth");
-    element.innerHTML = latestMonths.map((item, index) => `
-        <article class="trend-row">
-            <div>
-                <div class="trend-label">${escapeHtml(item.label)}</div>
-                <div class="trend-detail">
-                    ${index === 0 && monthlyAlert
-                        ? escapeHtml(monthlyAlert.message)
-                        : `${formatNumber(item.count)} user expenses logged`}
-                </div>
+            <div class="metric-share">
+                <strong>${formatPercent(item.userShare)}</strong>
+                <span>of spend</span>
             </div>
-            <div class="metric-name">${formatCurrency(item.total)}</div>
         </article>
-    `).join("");
+    `;
+    }).join("");
 }
 
 export function renderExpenseList(element, expenses) {

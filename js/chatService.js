@@ -5,14 +5,64 @@ function findMatch(question, candidates) {
     return candidates.find((candidate) => normalizedQuestion.includes(candidate.name.toLowerCase())) || null;
 }
 
+function rankInsight(item) {
+    const rank = { high: 4, medium: 3, low: 2, positive: 1 };
+    return rank[item.severity] || 0;
+}
+
+function orderInsights(items) {
+    return [...items].sort((left, right) => rankInsight(right) - rankInsight(left));
+}
+
+function insightIcon(item) {
+    if (item.severity === "high" || item.severity === "medium") {
+        return "⚠️";
+    }
+
+    if (item.severity === "positive") {
+        return "✅";
+    }
+
+    return "💡";
+}
+
+function trimSentence(value = "") {
+    return value.replace(/\s+/g, " ").replace(/\.$/, "").trim();
+}
+
+function buildAdvisorSnapshot(ruleInsights, options = {}) {
+    const limit = options.limit || 3;
+    const orderedItems = orderInsights([
+        ...ruleInsights.alerts,
+        ...ruleInsights.positives
+    ]).slice(0, limit);
+
+    if (!orderedItems.length) {
+        return "Your spending looks calm right now. Keep logging expenses so I can keep the baseline comparison current.";
+    }
+
+    const hasHighRisk = orderedItems.some((item) => item.severity === "high" || item.severity === "medium");
+    const summary = hasHighRisk
+        ? "Here's your spending snapshot this month:"
+        : "Your budget looks steady right now:";
+    const lines = orderedItems.map((item) => `${insightIcon(item)} ${trimSentence(item.message)}`);
+    const leadAction = orderedItems.find((item) => item.action)?.action;
+
+    return [
+        summary,
+        ...lines,
+        leadAction ? `Focus: ${trimSentence(leadAction)}.` : ""
+    ].filter(Boolean).join("\n");
+}
+
 function formatRuleSummary(ruleInsights) {
-    const priorityItems = [...ruleInsights.alerts, ...ruleInsights.positives].slice(0, 5);
+    const priorityItems = orderInsights([...ruleInsights.alerts, ...ruleInsights.positives]).slice(0, 5);
     if (!priorityItems.length) {
         return "No rule-based insights available yet.";
     }
 
     return priorityItems
-        .map((item) => `- ${item.title}: ${item.message} Next move: ${item.action}`)
+        .map((item) => `- ${item.title}: ${item.message} Suggested move: ${item.action}`)
         .join("\n");
 }
 
@@ -21,9 +71,8 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
         return {
             signature: "no-baseline",
             text: [
-                "I could not learn a spending baseline from the reference CSV yet.",
-                "Reason: the dataset does not contain enough valid expense rows for comparison.",
-                "Next step: restore the bundled baseline so I can compare your expenses against a learned pattern."
+                "I could not learn a reference baseline yet.",
+                "💡 Restore the baseline CSV so I can compare your expenses against a reliable pattern."
             ].join("\n")
         };
     }
@@ -32,23 +81,15 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
         return {
             signature: "no-user-expenses",
             text: [
-                "Add expenses to start comparing against the learned baseline.",
-                "Reason: your financial profile is ready, but there are no user expenses to judge yet.",
-                "Next step: add or import expenses and I will tell you what is affordable, what is above baseline, and whether your savings goal is safe."
+                "You're ready to start.",
+                "💡 Add or import expenses and I will compare them with the hidden baseline, your income, and your savings goal."
             ].join("\n")
         };
     }
 
-    const orderedAlerts = [...ruleInsights.alerts].sort((left, right) => {
-        const rank = { high: 3, medium: 2, low: 1 };
-        return (rank[right.severity] || 0) - (rank[left.severity] || 0);
-    });
+    const orderedAlerts = orderInsights(ruleInsights.alerts);
 
     if (orderedAlerts.length) {
-        const focusItems = orderedAlerts.slice(0, 3)
-            .map((item, index) => `${index + 1}. ${item.title}\nWhy it triggered: ${item.reason}\nNext step: ${item.action}`)
-            .join("\n\n");
-
         return {
             signature: JSON.stringify({
                 kind: "alerts",
@@ -56,13 +97,12 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
                 totalOutflow: Math.round(snapshot.userStats.comparisons.totalMonthlyOutflow || 0),
                 alerts: orderedAlerts.slice(0, 3).map((item) => item.id)
             }),
-            text: `Here is what stands out right now:\n\n${focusItems}`
+            text: buildAdvisorSnapshot({
+                alerts: orderedAlerts,
+                positives: ruleInsights.positives
+            })
         };
     }
-
-    const positiveItems = ruleInsights.positives.slice(0, 2)
-        .map((item, index) => `${index + 1}. ${item.title}\nWhy: ${item.reason}\nNext step: ${item.action}`)
-        .join("\n\n");
 
     return {
         signature: JSON.stringify({
@@ -71,9 +111,10 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
             totalOutflow: Math.round(snapshot.userStats.comparisons.totalMonthlyOutflow || 0),
             positives: ruleInsights.positives.slice(0, 2).map((item) => item.id)
         }),
-        text: positiveItems
-            ? `Your finances look stable right now.\n\n${positiveItems}`
-            : "Your spending, income pressure, and savings target all look stable right now."
+        text: buildAdvisorSnapshot({
+            alerts: [],
+            positives: ruleInsights.positives
+        }, { limit: 2 })
     };
 }
 
@@ -84,21 +125,21 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
 
     if (!userStats.metadata.hasRecords) {
         if (/(spend|expense|budget|category|trend|vendor|month|save|saving|income)/.test(q)) {
-            return "I have your profile and the hidden baseline ready, but I still need user expenses before I can analyze your real spending behavior.";
+            return "I have the hidden baseline ready. Add or import your expenses and I can compare your real spending against it.";
         }
         return null;
     }
 
     if (/(expenses exceed income|over income|above income|can i afford)/.test(q)) {
         if (userStats.comparisons.totalBudgetLoad === null) {
-            return "I need your financial profile before I can run affordability checks.";
+            return "I need your financial profile before I can run a proper affordability check.";
         }
 
         if (userStats.comparisons.totalBudgetLoad > 1) {
-            return `Yes, your current monthly outflow is ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)} against income of ${formatCurrency(userStats.profile.income)}, so expenses are exceeding income.`;
+            return `⚠️ Your outflow is above income: ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)} vs ${formatCurrency(userStats.profile.income)}. Focus on trimming the categories running above baseline first.`;
         }
 
-        return `Your current monthly outflow is ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)} against income of ${formatCurrency(userStats.profile.income)}, so you still have ${formatCurrency(userStats.comparisons.savingsCapacity)} left before planned savings.`;
+        return `✅ You are still within income. Outflow is ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)}, leaving about ${formatCurrency(userStats.comparisons.savingsCapacity)} before planned savings.`;
     }
 
     if (/(savings rate|save rate|saving rate)/.test(q)) {
@@ -109,7 +150,12 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
         const targetText = userStats.comparisons.targetSavingsRate !== null
             ? ` against a target of ${formatPercent(userStats.comparisons.targetSavingsRate)}`
             : "";
-        return `Your current savings rate is ${formatPercent(userStats.comparisons.actualSavingsRate)}${targetText}.`;
+        const savingsStatus = userStats.comparisons.targetSavingsRate === null
+            ? "Add a savings goal to judge whether that rate is enough."
+            : userStats.comparisons.actualSavingsRate >= userStats.comparisons.targetSavingsRate
+                ? "✅ That looks healthy."
+                : "⚠️ Trim above-baseline categories to close the gap.";
+        return `Your current savings rate is ${formatPercent(userStats.comparisons.actualSavingsRate)}${targetText}. ${savingsStatus}`;
     }
 
     if (/(how much room|buffer|margin|left after expenses)/.test(q)) {
@@ -128,7 +174,9 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
             : "";
 
         if (comparison && comparison.baselineMedianShare > 0) {
-            return `You spent ${formatCurrency(categoryMatch.total)} on ${categoryMatch.name}, which is ${formatPercent(categoryMatch.share)} of your logged spend. The learned median for this category is ${formatPercent(comparison.baselineMedianShare)}, so you are ${comparison.deltaFromMedian >= 0 ? "above" : "below"} baseline by ${formatPercent(Math.abs(comparison.deltaFromMedian))}.${incomeContext}`;
+            const direction = comparison.deltaFromMedian >= 0 ? "above" : "below";
+            const icon = comparison.deltaFromMedian > 0 ? "⚠️" : "✅";
+            return `${icon} ${categoryMatch.name}: ${formatCurrency(categoryMatch.total)} (${formatPercent(categoryMatch.share)} of spend). That is ${direction} the learned baseline by ${formatPercent(Math.abs(comparison.deltaFromMedian))}.${incomeContext}`;
         }
 
         return `You spent ${formatCurrency(categoryMatch.total)} on ${categoryMatch.name}, which is ${formatPercent(categoryMatch.share)} of your logged spend.${incomeContext}`;
@@ -146,7 +194,10 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
     if (/(overspending|over budget|too much)/.test(q)) {
         const leadAlert = ruleInsights.alerts[0];
         if (leadAlert) {
-            return `${leadAlert.message} ${leadAlert.reason}`;
+            return buildAdvisorSnapshot({
+                alerts: [leadAlert],
+                positives: []
+            }, { limit: 1 });
         }
         return "I do not see a strong overspending signal right now. Your spending, income pressure, and savings target look reasonably aligned.";
     }
@@ -181,9 +232,10 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
             return "The comparison does not show any strong warnings right now. Keep logging expenses and tracking your profile so I can stay sharp.";
         }
 
-        return leadItems
-            .map((item, index) => `${index + 1}. ${item.title}: ${item.message} ${item.action}`)
-            .join("\n");
+        return buildAdvisorSnapshot({
+            alerts: ruleInsights.alerts,
+            positives: ruleInsights.positives
+        });
     }
 
     if (/(baseline|reference).*(month|monthly|typical)/.test(q)) {
@@ -211,10 +263,12 @@ export function buildGeminiSystemInstruction(snapshot, ruleInsights) {
 Rules:
 1. Stay inside personal finance, budgeting, saving, cash flow, and investment planning topics.
 2. Never fabricate dataset details. If the context is missing something, say so plainly.
-3. Keep answers concise, practical, and under 14 lines.
+3. Start with a short summary, then show only the top 2-3 useful insights unless the user asks for more.
 4. Treat the CSV as a hidden reference corpus only. Do not present it as the user's own data.
 5. Combine three things in every explanation: hidden baseline, user expenses, and the financial profile.
 6. Use direct numbers from the structured context below whenever possible.
+7. Sound like a friendly professional advisor, not a system report.
+8. Use emojis sparingly for clarity. Avoid repeated "why it triggered" / "next step" blocks and long paragraphs.
 
 Structured finance context:
 - User monthly income: ${formatCurrency(snapshot.userStats.profile.income)}
