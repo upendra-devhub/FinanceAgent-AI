@@ -547,7 +547,7 @@ export function renderChatHistory(element, conversation, defaultMessage) {
 
     element.innerHTML = conversation.map((message) => {
         const sender = message.role === "user" ? "user" : "ai";
-        const text = message.parts?.[0]?.text || "";
+        const text = message.content || message.parts?.[0]?.text || "";
         if (sender === "ai") {
             return `
                 <div class="message-row ai-row">
