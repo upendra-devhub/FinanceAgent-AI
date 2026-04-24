@@ -30,7 +30,6 @@ import {
     renderExpenseList,
     renderImportStatus,
     renderInsightCards,
-    renderRecentTransactions,
     renderUploadPreview,
     renderUserCards,
     setLoadingState
@@ -71,7 +70,6 @@ const elements = {
     investmentAllocation: document.getElementById("investmentAllocation"),
     dashboardInsights: document.getElementById("dashboardInsights"),
     insightRailCards: document.getElementById("insightRailCards"),
-    recentTransactions: document.getElementById("recentTransactions"),
     expenseList: document.getElementById("expenseList"),
     expenseFileInput: document.getElementById("expenseFileInput"),
     uploadZone: document.getElementById("uploadZone"),
@@ -178,6 +176,10 @@ function publishAutomatedInsights(force = false) {
         return;
     }
 
+    if (state.conversation.length === 0) {
+        elements.chatHistoryBox.innerHTML = "";
+    }
+
     appendAssistantMessage(digest.text);
     state.lastInsightSignature = digest.signature;
     saveLastInsightSignature(digest.signature);
@@ -197,7 +199,6 @@ function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {})
     renderUserCards(elements.userCards, state.userStats, state.comparisonInsights);
     renderCategoryComparison(elements.categoryComparison, state.comparisonInsights.categoryComparisons, state.comparisonInsights, state.baseline);
     renderExpenseList(elements.expenseList, state.manualExpenses);
-    renderRecentTransactions(elements.recentTransactions, state.manualExpenses);
     renderInsightCards(elements.insightRailCards, state.comparisonInsights, 1);
     renderDashboardVisuals({
         categoryDonut: elements.categoryDonut,

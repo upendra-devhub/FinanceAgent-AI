@@ -427,10 +427,6 @@ export function renderExpenseList(element, expenses) {
     `;
 }
 
-export function renderRecentTransactions() {
-    // Intentionally suppressed in the current layout.
-}
-
 export function renderInsightCards(element, ruleInsights, limit = 4) {
     if (!element) {
         return;

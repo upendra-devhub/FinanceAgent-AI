@@ -235,6 +235,24 @@ function inferTransactionType({ rawType, amount, category, description, vendor, 
     return amount < 0 ? "expense" : "expense";
 }
 
+function looksLikeTransactionTypeColumn(rows, header) {
+    if (!header) {
+        return false;
+    }
+
+    const values = rows
+        .slice(0, 25)
+        .map((row) => String(row?.[header] || "").trim().toLowerCase())
+        .filter(Boolean);
+
+    if (!values.length) {
+        return false;
+    }
+
+    const transactionTypeHits = values.filter((value) => /^(expense|income|investment|credit|debit|dr|cr|withdrawal|deposit)$/.test(value));
+    return transactionTypeHits.length / values.length >= 0.5;
+}
+
 function buildFlexibleUserRecord(row, index, sourceName, mapping) {
     const date = mapping.date ? parseDateValue(row[mapping.date]) : null;
     const rawDescription = mapping.description ? row[mapping.description] : "";
@@ -469,14 +487,19 @@ export function parseUserExpenseRows(rows, sourceName = "expenses-import") {
     }
 
     const headers = Object.keys(rows[0] || {});
+    const typeHeader = findMappedHeader(headers, rows, "type");
+    const categoryHeader = findMappedHeader(headers, rows, "category");
+    const reservedTypeHeader = looksLikeTransactionTypeColumn(rows, typeHeader) ? typeHeader : null;
+    const safeCategoryHeader = reservedTypeHeader && categoryHeader === reservedTypeHeader ? null : categoryHeader;
+
     const mapping = {
         date: findMappedHeader(headers, rows, "date"),
-        category: findMappedHeader(headers, rows, "category"),
+        category: safeCategoryHeader,
         amount: findMappedHeader(headers, rows, "amount"),
         vendor: findMappedHeader(headers, rows, "vendor"),
         description: findMappedHeader(headers, rows, "description"),
         paymentMode: findMappedHeader(headers, rows, "paymentMode"),
-        type: findMappedHeader(headers, rows, "type"),
+        type: typeHeader,
         debit: findMappedHeader(headers, rows, "debit"),
         credit: findMappedHeader(headers, rows, "credit")
     };
