@@ -61,7 +61,7 @@ function calculateHealthScore(baseline, userStats, alerts) {
     return {
         value,
         band,
-        summary: `Health score is ${value}/100 (${band.toLowerCase()}) based on your spending mix, income pressure, savings target coverage, and how your behavior compares with the learned baseline.`
+        summary: `Health score is ${value}/100 (${band.toLowerCase()}) based on your spending mix, income pressure, savings target coverage, and how your behavior compares with your usual spending pattern.`
     };
 }
 
@@ -75,7 +75,7 @@ function buildProfileReminder(userStats) {
         id: "profile-missing",
         severity: "low",
         title: "Complete your financial profile",
-        message: "The advisor can compare your expenses against the baseline already, but affordability and savings checks are still limited.",
+        message: "The advisor can already compare your expenses with your usual spending pattern, but affordability and savings checks are still limited.",
         reason: `These profile fields are missing: ${missing}.`,
         action: "Open the profile menu in the navbar and fill in your financial profile."
     };
@@ -88,8 +88,8 @@ export function generateComparisonInsights({ baseline, userStats }) {
                 {
                     id: "no-baseline",
                     severity: "low",
-                    title: "Reference baseline unavailable",
-                    message: "The app could not learn a reference pattern because the dataset has no valid expense rows.",
+                    title: "Reference spending pattern unavailable",
+                    message: "The app could not learn a usual spending pattern because the dataset has no valid expense rows.",
                     reason: "Without a baseline corpus, comparison rules cannot fire.",
                     action: "Restore the bundled reference file or provide a valid baseline dataset."
                 }
@@ -117,9 +117,9 @@ export function generateComparisonInsights({ baseline, userStats }) {
             id: "no-user-expenses",
             severity: "low",
             title: "No user expenses logged yet",
-            message: "The hidden baseline is ready, but there are no current user expenses to compare against it.",
+            message: "Your usual spending pattern is ready, but there are no current expenses to compare against it.",
             reason: "Reference learning is separate from the user's own expense profile.",
-            action: "Add or import expenses to start baseline-vs-user comparison."
+            action: "Add or import expenses to start comparing your current spending with your usual pattern."
         });
 
         return {
@@ -180,8 +180,8 @@ export function generateComparisonInsights({ baseline, userStats }) {
                 addItem(alerts, {
                     id: `category-${row.name}`,
                     severity: row.status === "well-above" ? "high" : "medium",
-                    title: `${row.name} is above the learned baseline`,
-                    message: `${row.name} is above baseline by ${formatPercent(row.deltaFromMedian)} of your spending mix.${incomeContext}`,
+                    title: `${row.name} is above your usual spending`,
+                    message: `${row.name} is above your usual level by ${formatPercent(row.deltaFromMedian)} of your spending mix.${incomeContext}`,
                     reason: `Your share is ${formatPercent(row.userShare)} versus a reference median of ${formatPercent(row.baselineMedianShare)} and an upper range near ${formatPercent(row.baselineQ3Share)}.`,
                     action: `Review the biggest ${row.name} transactions and decide whether this category should be capped next month.`
                 });
@@ -197,16 +197,16 @@ export function generateComparisonInsights({ baseline, userStats }) {
             addItem(alerts, {
                 id: "user-month-above-baseline",
                 severity: userLatest > baseline.monthly.totalDistribution.upperFence ? "high" : "medium",
-                title: "Latest user month is above the reference monthly pattern",
-                message: `${userStats.monthly.latestPeriod.label} is ${formatCurrency(userLatest - monthlyMedian)} above the reference median month.`,
+                title: "This month is above your usual monthly pattern",
+                message: `${userStats.monthly.latestPeriod.label} is ${formatCurrency(userLatest - monthlyMedian)} above your usual month.`,
                 reason: `Your latest month is ${formatCurrency(userLatest)} versus a reference median of ${formatCurrency(monthlyMedian)} and upper quartile of ${formatCurrency(monthlyQ3)}.`,
-                action: "Break the month into categories and cut the ones that sit furthest above baseline."
+                action: "Break the month into categories and cut the ones that sit furthest above your usual level."
             });
         } else {
             addItem(positives, {
                 id: "user-month-within-baseline",
                 severity: "positive",
-                title: "Your latest month sits inside the learned range",
+                title: "This month is staying close to your usual range",
                 message: `${userStats.monthly.latestPeriod.label} is still within the expected spend envelope.`,
                 reason: `Your latest month is ${formatCurrency(userLatest)} compared with a reference median of ${formatCurrency(monthlyMedian)}.`,
                 action: "Keep using that month as your benchmark for future planning."
@@ -258,7 +258,7 @@ export function generateComparisonInsights({ baseline, userStats }) {
                 title: "Your savings rate is below target",
                 message: `You are currently saving at ${formatPercent(userStats.comparisons.actualSavingsRate)} versus a target of ${formatPercent(userStats.comparisons.targetSavingsRate)}.`,
                 reason: `Your current monthly margin is ${formatCurrency(userStats.comparisons.savingsCapacity)} against a savings goal of ${formatCurrency(userStats.profile.goal)}.`,
-                action: "Trim the categories above baseline or adjust your goal timeline to restore a realistic monthly savings rate."
+                action: "Trim categories that are above your usual level or adjust your goal timeline to restore a realistic monthly savings rate."
             });
         } else {
             addItem(positives, {

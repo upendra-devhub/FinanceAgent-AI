@@ -16,14 +16,14 @@ function orderInsights(items) {
 
 function insightIcon(item) {
     if (item.severity === "high" || item.severity === "medium") {
-        return "⚠️";
+        return "Alert:";
     }
 
     if (item.severity === "positive") {
-        return "✅";
+        return "Good:";
     }
 
-    return "💡";
+    return "Note:";
 }
 
 function trimSentence(value = "") {
@@ -38,7 +38,7 @@ function buildAdvisorSnapshot(ruleInsights, options = {}) {
     ]).slice(0, limit);
 
     if (!orderedItems.length) {
-        return "Your spending looks calm right now. Keep logging expenses so I can keep the baseline comparison current.";
+        return "Your spending looks calm right now. Keep logging expenses so I can compare it with your usual pattern.";
     }
 
     const hasHighRisk = orderedItems.some((item) => item.severity === "high" || item.severity === "medium");
@@ -72,7 +72,7 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
             signature: "no-baseline",
             text: [
                 "I could not learn a reference baseline yet.",
-                "💡 Restore the baseline CSV so I can compare your expenses against a reliable pattern."
+                "Note: restore the reference CSV so I can compare your expenses against a reliable pattern."
             ].join("\n")
         };
     }
@@ -82,7 +82,7 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
             signature: "no-user-expenses",
             text: [
                 "You're ready to start.",
-                "💡 Add or import expenses and I will compare them with the hidden baseline, your income, and your savings goal."
+                "Note: add or import expenses and I will compare them with your usual spending pattern, your income, and your savings goal."
             ].join("\n")
         };
     }
@@ -125,7 +125,7 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
 
     if (!userStats.metadata.hasRecords) {
         if (/(spend|expense|budget|category|trend|vendor|month|save|saving|income)/.test(q)) {
-            return "I have the hidden baseline ready. Add or import your expenses and I can compare your real spending against it.";
+            return "I have your usual spending pattern ready. Add or import expenses and I can compare your real spending against it.";
         }
         return null;
     }
@@ -136,10 +136,10 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
         }
 
         if (userStats.comparisons.totalBudgetLoad > 1) {
-            return `⚠️ Your outflow is above income: ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)} vs ${formatCurrency(userStats.profile.income)}. Focus on trimming the categories running above baseline first.`;
+            return `Alert: your outflow is above income: ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)} vs ${formatCurrency(userStats.profile.income)}. Focus on trimming the categories running above your usual level first.`;
         }
 
-        return `✅ You are still within income. Outflow is ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)}, leaving about ${formatCurrency(userStats.comparisons.savingsCapacity)} before planned savings.`;
+        return `Good: you are still within income. Outflow is ${formatCurrency(userStats.comparisons.totalMonthlyOutflow)}, leaving about ${formatCurrency(userStats.comparisons.savingsCapacity)} before planned savings.`;
     }
 
     if (/(savings rate|save rate|saving rate)/.test(q)) {
@@ -153,8 +153,8 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
         const savingsStatus = userStats.comparisons.targetSavingsRate === null
             ? "Add a savings goal to judge whether that rate is enough."
             : userStats.comparisons.actualSavingsRate >= userStats.comparisons.targetSavingsRate
-                ? "✅ That looks healthy."
-                : "⚠️ Trim above-baseline categories to close the gap.";
+                ? "That looks healthy."
+                : "Trim categories that are above your usual level to close the gap.";
         return `Your current savings rate is ${formatPercent(userStats.comparisons.actualSavingsRate)}${targetText}. ${savingsStatus}`;
     }
 
@@ -175,8 +175,8 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
 
         if (comparison && comparison.baselineMedianShare > 0) {
             const direction = comparison.deltaFromMedian >= 0 ? "above" : "below";
-            const icon = comparison.deltaFromMedian > 0 ? "⚠️" : "✅";
-            return `${icon} ${categoryMatch.name}: ${formatCurrency(categoryMatch.total)} (${formatPercent(categoryMatch.share)} of spend). That is ${direction} the learned baseline by ${formatPercent(Math.abs(comparison.deltaFromMedian))}.${incomeContext}`;
+            const icon = comparison.deltaFromMedian > 0 ? "Alert:" : "Good:";
+            return `${icon} ${categoryMatch.name}: ${formatCurrency(categoryMatch.total)} (${formatPercent(categoryMatch.share)} of spend). That is ${direction} your usual level by ${formatPercent(Math.abs(comparison.deltaFromMedian))}.${incomeContext}`;
         }
 
         return `You spent ${formatCurrency(categoryMatch.total)} on ${categoryMatch.name}, which is ${formatPercent(categoryMatch.share)} of your logged spend.${incomeContext}`;
@@ -199,15 +199,30 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
                 positives: []
             }, { limit: 1 });
         }
-        return "I do not see a strong overspending signal right now. Your spending, income pressure, and savings target look reasonably aligned.";
+        return "I do not see a strong overspending trend right now. Your spending, income pressure, and savings target look reasonably aligned.";
     }
 
     if (/(which category is too high|highest category|too high)/.test(q) && /(category|spending|spend)/.test(q)) {
         const flaggedCategory = ruleInsights.categoryComparisons.find((item) => item.status === "well-above" || item.status === "above");
         if (flaggedCategory) {
-            return `${flaggedCategory.name} is the clearest category above baseline. Your share is ${formatPercent(flaggedCategory.userShare)} versus a learned median of ${formatPercent(flaggedCategory.baselineMedianShare)}.`;
+            return `${flaggedCategory.name} is the clearest category above your usual level. Your share is ${formatPercent(flaggedCategory.userShare)} versus your usual level near ${formatPercent(flaggedCategory.baselineMedianShare)}.`;
         }
-        return "No category is materially above the learned baseline right now.";
+        return "No category is materially above your usual level right now.";
+    }
+
+    if (/(biggest expenses|largest expenses|top expenses|highest expenses)/.test(q)) {
+        const topExpenses = [...userStats.records]
+            .sort((left, right) => right.amount - left.amount)
+            .slice(0, 3);
+
+        if (!topExpenses.length) {
+            return "I do not have enough expense data yet to rank your largest transactions.";
+        }
+
+        return [
+            "Here are your biggest logged expenses:",
+            ...topExpenses.map((expense, index) => `${index + 1}. ${expense.vendor || expense.category} - ${formatCurrency(expense.amount)} on ${expense.dateLabel || expense.date || "unknown date"}`)
+        ].join("\n");
     }
 
     if (/(this month|current month|latest month)/.test(q) && /(spend|expense|spent)/.test(q)) {
@@ -239,7 +254,7 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
     }
 
     if (/(baseline|reference).*(month|monthly|typical)/.test(q)) {
-        return `The hidden reference baseline models a typical month around ${formatCurrency(baseline.monthly.totalDistribution.median)}, but I only use that internally to judge your own behavior.`;
+        return `Your usual monthly spending pattern is around ${formatCurrency(baseline.monthly.totalDistribution.median)}. I only use that as a reference to judge your own behavior.`;
     }
 
     return null;
@@ -268,7 +283,7 @@ Rules:
 5. Combine three things in every explanation: hidden baseline, user expenses, and the financial profile.
 6. Use direct numbers from the structured context below whenever possible.
 7. Sound like a friendly professional advisor, not a system report.
-8. Use emojis sparingly for clarity. Avoid repeated "why it triggered" / "next step" blocks and long paragraphs.
+8. Keep responses compact, clear, and actionable.
 
 Structured finance context:
 - User monthly income: ${formatCurrency(snapshot.userStats.profile.income)}

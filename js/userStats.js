@@ -26,6 +26,7 @@ function normalizeUserExpense(expense) {
         vendor: expense.vendor || "",
         description: expense.description || "",
         paymentMode: expense.paymentMode || "",
+        transactionType: expense.transactionType || expense.type || "expense",
         raw: expense
     };
 }
@@ -56,9 +57,12 @@ function buildProfileState(profile = {}) {
 }
 
 export function buildUserStats({ manualExpenses = [], profile = {} }) {
-    const records = manualExpenses
+    const allRecords = manualExpenses
         .map(normalizeUserExpense)
         .filter((record) => Number.isFinite(record.amount) && record.amount > 0);
+    const incomeRecords = allRecords.filter((record) => record.transactionType === "income");
+    const investmentRecords = allRecords.filter((record) => record.transactionType === "investment");
+    const records = allRecords.filter((record) => record.transactionType === "expense");
 
     const parsedProfile = buildProfileState(profile);
 
@@ -182,10 +186,16 @@ export function buildUserStats({ manualExpenses = [], profile = {} }) {
 
     return {
         profile: parsedProfile,
+        allRecords,
+        incomeRecords,
+        investmentRecords,
         records,
         totals: {
             totalExpense,
+            uploadedIncome: incomeRecords.reduce((sum, record) => sum + record.amount, 0),
+            investmentTotal: investmentRecords.reduce((sum, record) => sum + record.amount, 0),
             averageExpense,
+            transactionCount: allRecords.length,
             expenseCount: records.length,
             biggestExpense,
             activeMonths: monthlyTrend.length,
@@ -237,8 +247,20 @@ export function buildUserStats({ manualExpenses = [], profile = {} }) {
             discretionaryUsage,
             existingSavingsCoverage
         },
+        investments: {
+            total: investmentRecords.reduce((sum, record) => sum + record.amount, 0),
+            list: sortTotalsDescending(investmentRecords.reduce((map, record) => {
+                const key = record.category || "Investment";
+                const value = map.get(key) || { total: 0, count: 0 };
+                value.total += record.amount;
+                value.count += 1;
+                map.set(key, value);
+                return map;
+            }, new Map()))
+        },
         metadata: {
             hasRecords: records.length > 0,
+            hasTransactions: allRecords.length > 0,
             hasDates: monthlyTrend.length > 0,
             hasVendors: vendorBreakdown.length > 0
         }

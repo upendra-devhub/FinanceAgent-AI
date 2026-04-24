@@ -3,141 +3,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinanceAgent AI Dashboard</title>
+    <title>FinanceAgent AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="app-page">
+    <div class="noise-layer" aria-hidden="true"></div>
     <div class="app-shell">
-        <header class="topbar">
+        <aside class="sidebar">
             <div class="brand-block">
-                <p class="eyebrow">Personal Finance Advisor</p>
-                <h1>FinanceAgent AI</h1>
-            </div>
-
-            <div class="topbar-actions">
-                <div class="profile-menu">
-                    <button type="button" class="profile-trigger" id="profileMenuBtn" aria-expanded="false" aria-haspopup="true" aria-label="Open profile menu" title="Profile">
-                        <span class="profile-trigger-avatar">P</span>
-                    </button>
-
-                    <div class="profile-dropdown" id="profileDropdown" aria-hidden="true">
-                        <a class="dropdown-link" href="./profile.html">Edit Financial Profile</a>
-
-                        <div class="dropdown-section">
-                            <label class="dropdown-label" for="apiKey">API Key Settings</label>
-                            <input type="password" id="apiKey" placeholder="Paste key to auto-save">
-                            <p class="dropdown-help">Saved only in this browser.</p>
-                        </div>
-
-                        <button type="button" class="button button-ghost dropdown-danger" id="clearAllBtn">Clear All Data</button>
-                    </div>
+                <span class="brand-mark material-symbols-outlined">auto_awesome</span>
+                <div>
+                    <h1>FinanceAgent</h1>
+                    <p>Premium AI Concierge</p>
                 </div>
             </div>
-        </header>
 
-        <main class="dashboard">
-            <section class="left-column">
-                <section class="panel summary-panel">
-                    <div class="content-section">
-                        <div class="subsection-heading">
-                            <div>
-                                <h3>Spending Overview</h3>
-                                <p>Derived metrics stay here, while profile details live only inside the profile menu.</p>
-                            </div>
-                        </div>
+            <button type="button" class="new-analysis sidebar-new-top" data-view-target="expenses">
+                <span>+</span>
+                New Analysis
+            </button>
 
-                        <div id="userCards" class="summary-grid"></div>
+            <nav class="nav-list" aria-label="Primary">
+                <button type="button" class="nav-item active" data-view-target="chat">
+                    <span class="material-symbols-outlined">chat_bubble</span>
+                    Workspace
+                </button>
+                <button type="button" class="nav-item" data-view-target="expenses">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    Analysis
+                </button>
+                <button type="button" class="nav-item" data-view-target="dashboard">
+                    <span class="material-symbols-outlined">grid_view</span>
+                    Dashboard
+                </button>
+                <button type="button" class="nav-item" data-view-target="insights">
+                    <span class="material-symbols-outlined">auto_awesome</span>
+                    Insights
+                </button>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <button type="button" class="nav-item settings-shortcut" data-view-target="settings">
+                    <span class="material-symbols-outlined">settings</span>
+                    Settings
+                </button>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <header class="workspace-header">
+                <div>
+                    <h2 id="viewTitle">FinanceAgent AI</h2>
+                    <p id="viewSubtitle">Premium AI Concierge</p>
+                </div>
+            </header>
+
+            <section class="app-view active chat-workspace" id="chatView" data-view="chat">
+                <div class="chat-stage">
+                    <div id="chatHistoryBox" class="chat-history"></div>
+
+                    <div class="thinking-row">
+                        <span></span>
+                        <em id="loader" aria-live="polite">Analyzing campaign ROI metrics...</em>
                     </div>
-                </section>
 
-                <section class="panel analysis-panel">
-                    <div class="category-panel">
-                        <div class="section-heading">
-                            <div>
-                                <h2>Category Pressure</h2>
-                                <p>Your spending mix compared with the hidden learned baseline.</p>
-                            </div>
-                        </div>
-                        <div id="categoryComparison" class="metric-list"></div>
+                    <div class="quick-actions" aria-label="Quick actions">
+                        <button type="button" class="quick-action" data-quick-action="analyze">Analyze spending</button>
+                        <button type="button" class="quick-action" data-quick-action="upload">
+                            <span class="material-symbols-outlined">upload</span>
+                            Upload CSV
+                        </button>
+                        <button type="button" class="quick-action" data-quick-action="budget">Create budget</button>
                     </div>
-                </section>
 
-                <section class="panel expense-panel">
-                    <div class="section-heading section-heading-spread">
+                    <div class="chat-input-row">
+                        <button type="button" class="input-plus" id="contextAddBtn" aria-label="Add context">
+                            <span class="material-symbols-outlined">add_circle</span>
+                        </button>
+                        <input type="text" id="chatInput" placeholder="Ask about your finances, upload a document, or generate a">
+                        <button type="button" class="send-button" id="sendBtn" aria-label="Send">
+                            <span class="material-symbols-outlined">send</span>
+                        </button>
+                    </div>
+
+                    <p class="ai-disclaimer">FinanceAgent AI may produce inaccurate information.</p>
+                </div>
+
+                <aside class="insight-rail">
+                    <p class="rail-kicker">Live Insights</p>
+                    <div id="insightRailCards" class="rail-card-stack"></div>
+                    <article class="rail-card projection-card">
                         <div>
-                            <h2>Logged Expenses</h2>
-                            <p>Your manual and imported expenses are analyzed against the hidden reference baseline.</p>
+                            <h3>Cash Flow Projection</h3>
+                            <span class="material-symbols-outlined">trending_up</span>
                         </div>
-
-                        <div class="expense-actions">
-                            <label class="button button-secondary file-button" for="expenseFileInput">Upload Expenses</label>
-                            <input type="file" id="expenseFileInput" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
-                            <button type="button" class="button" id="openExpenseModalBtn">Add Expense</button>
+                        <p>Positive trend maintained. Expected runway extended by 1.2 months based on current burn rate.</p>
+                        <div class="mini-bars">
+                            <span></span><span></span><span></span><span></span><span></span><span></span>
                         </div>
-                    </div>
-
-                    <p class="help-inline">Upload CSV or Excel with exactly these headers: <strong>date</strong>, <strong>category</strong>, <strong>amount_spent</strong>.</p>
-                    <div id="expenseList" class="expense-list"></div>
-                </section>
+                    </article>
+                    <article class="rail-card tax-card">
+                        <div>
+                            <h3>Tax Liability Est.</h3>
+                            <span class="material-symbols-outlined">account_balance</span>
+                        </div>
+                        <strong id="taxEstimate">₹14,250</strong>
+                        <p>Q3 Estimated. Due in 14 days.</p>
+                    </article>
+                </aside>
             </section>
 
-            <section class="chat-panel">
-                <div class="chat-header">
-                    <div>
-                        <h2>Advisor Chat</h2>
-                        <p>Warnings, suggestions, affordability checks, and AI explanations all land here.</p>
+            <section class="app-view analysis-workspace" id="expensesView" data-view="expenses">
+                <div class="analysis-header">
+                    <h2>Ingest Data</h2>
+                    <p>Upload your financial statements or raw transaction data for AI categorization.</p>
+                </div>
+
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-orb">
+                        <span class="material-symbols-outlined">cloud_upload</span>
                     </div>
+                    <h3>Drop your CSV here</h3>
+                    <p>We accept standard bank exports, credit card statements,<br>and custom ledgers up to 50MB.</p>
+                    <label class="browse-button" for="expenseFileInput">
+                        <span class="material-symbols-outlined">folder</span>
+                        Browse Files
+                    </label>
+                    <input type="file" id="expenseFileInput" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
                 </div>
 
-                <div id="chatHistoryBox" class="chat-history"></div>
+                <div id="importStatus" class="import-status" aria-live="polite"></div>
+                <div id="uploadPreview" class="upload-preview"></div>
+                <div id="expenseList" class="expense-list"></div>
+            </section>
 
-                <div class="chat-input-row">
-                    <input type="text" id="chatInput" placeholder="Ask about your budget, affordability, goals, or spending patterns">
-                    <button type="button" class="button" id="sendBtn">Send</button>
+            <section class="app-view dashboard-workspace" id="dashboardView" data-view="dashboard">
+                <div class="dashboard-title-row">
+                    <div>
+                        <h2>Financial Overview</h2>
+                        <p>Your wealth at a glance, updated just now.</p>
+                    </div>
+                    <span class="date-pill">Last 30 Days</span>
                 </div>
 
-                <div id="loader" class="loader" aria-live="polite">Thinking...</div>
+                <div id="userCards" class="summary-grid"></div>
+
+                <div class="dashboard-body">
+                    <article class="cash-flow-card">
+                        <div class="card-title-row">
+                            <h3>Cash Flow</h3>
+                            <span>...</span>
+                        </div>
+                        <div id="monthlyChart" class="cash-flow-chart"></div>
+                    </article>
+
+                    <article class="spending-profile-card">
+                        <h3>Spending Profile</h3>
+                        <div id="categoryDonut" class="spending-profile"></div>
+                    </article>
+                </div>
+
+                <div class="dashboard-lower">
+                    <article class="savings-card">
+                        <h3>Savings Goals</h3>
+                        <div id="savingsProgress"></div>
+                    </article>
+                    <article class="agent-insights-card">
+                        <span class="material-symbols-outlined">auto_awesome</span>
+                        <h3>Agent Insights</h3>
+                        <div id="dashboardInsights" class="dashboard-insights"></div>
+                    </article>
+                    <div id="investmentAllocation" class="allocation-list"></div>
+                </div>
+            </section>
+
+            <section class="app-view intelligence-workspace" id="insightsView" data-view="insights">
+                <div class="intelligence-layout">
+                    <section>
+                        <div id="categoryComparison" class="metric-list"></div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="app-view settings-workspace" id="settingsView" data-view="settings">
+                <div class="settings-grid">
+                    <article class="settings-card">
+                        <h3>Financial Profile</h3>
+                        <p>Income, savings, goals, and mandatory expenses shape the advice.</p>
+                        <a class="button subtle-button" href="./profile.html">Edit Profile</a>
+                    </article>
+                    <article class="settings-card">
+                        <h3>Gemini API Key</h3>
+                        <p>Stored only in this browser and used for richer AI answers.</p>
+                        <label class="field">
+                            <span>API Key</span>
+                            <input type="password" id="apiKey" placeholder="Paste key to auto-save">
+                        </label>
+                    </article>
+                    <article class="settings-card">
+                        <h3>Reset Workspace</h3>
+                        <p>Clear profile, API key, transactions, chat history, cached insights, and browser UI state.</p>
+                        <button type="button" class="button danger-button" id="clearAllBtn">Reset All Data</button>
+                    </article>
+                </div>
             </section>
         </main>
+
+        <button type="button" class="floating-add" id="openExpenseModalBtn" aria-label="Add expense">
+            <span class="material-symbols-outlined">add</span>
+        </button>
+        <button type="button" class="floating-add hidden" id="floatingExpenseBtn" aria-label="Add expense">
+            <span class="material-symbols-outlined">add</span>
+        </button>
     </div>
 
     <div class="modal-overlay" id="expenseModal" aria-hidden="true">
         <div class="modal">
-            <div class="section-heading">
-                <div>
-                    <h2>Log New Expense</h2>
-                    <p>This adds to your own expense profile and updates the advisor immediately.</p>
-                </div>
+            <div class="modal-heading">
+                <h3>Add Expense</h3>
+                <p>Manual entries instantly update the dashboard and AI context.</p>
             </div>
 
             <label class="field">
                 <span>Date</span>
                 <input type="date" id="expDate">
             </label>
-
             <label class="field">
                 <span>Category</span>
                 <select id="expCategory"></select>
             </label>
-
             <label class="field">
                 <span>Vendor</span>
                 <input type="text" id="expVendor" placeholder="D-Mart, Swiggy, Uber">
             </label>
-
             <label class="field">
                 <span>Description</span>
                 <input type="text" id="expDescription" placeholder="Optional note">
             </label>
-
             <label class="field">
                 <span>Amount</span>
                 <input type="number" id="expAmount" placeholder="1500">
             </label>
 
             <div class="modal-actions">
-                <button type="button" class="button button-secondary" id="cancelExpenseBtn">Cancel</button>
+                <button type="button" class="button subtle-button" id="cancelExpenseBtn">Cancel</button>
                 <button type="button" class="button" id="saveExpenseBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="resetModal" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-heading">
+                <h3>Reset All Data</h3>
+                <p>This will delete all financial data. Continue?</p>
+            </div>
+
+            <p class="modal-copy">This removes transactions, uploaded CSV imports, derived analytics, chat history, API key, and saved profile values from this browser.</p>
+
+            <div class="modal-actions">
+                <button type="button" class="button subtle-button" id="cancelResetBtn">Cancel</button>
+                <button type="button" class="button danger-button" id="confirmResetBtn">Reset Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="clearTransactionsModal" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-heading">
+                <h3>Clear All Transactions</h3>
+                <p>This will delete all your data. Continue?</p>
+            </div>
+
+            <p class="modal-copy">This removes every imported and manually added transaction, then refreshes your dashboard, insights, and chat context.</p>
+
+            <div class="modal-actions">
+                <button type="button" class="button subtle-button" id="cancelClearTransactionsBtn">Cancel</button>
+                <button type="button" class="button danger-button" id="confirmClearTransactionsBtn">Clear Transactions</button>
             </div>
         </div>
     </div>

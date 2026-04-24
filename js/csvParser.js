@@ -5,8 +5,23 @@ const FIELD_KEYWORDS = {
     vendor: ["vendor", "merchant", "payee", "store", "shop", "outlet", "receiver", "beneficiary"],
     description: ["description", "note", "notes", "memo", "remarks", "remark", "narration", "details"],
     paymentMode: ["paymentmode", "paymentmethod", "payment", "mode", "method", "channel"],
-    month: ["month", "period"]
+    month: ["month", "period"],
+    type: ["type", "transactiontype", "tag", "flow", "direction", "creditdebit", "debitcredit"],
+    credit: ["credit", "deposit", "income", "received", "cr"],
+    debit: ["debit", "withdrawal", "paid", "dr"]
 };
+
+const CATEGORY_RULES = [
+    { category: "Food", keywords: ["swiggy", "zomato", "restaurant", "cafe", "food", "grocery", "blinkit", "zepto", "dmart", "mart"] },
+    { category: "Rent", keywords: ["rent", "lease", "landlord"] },
+    { category: "Transport", keywords: ["uber", "ola", "metro", "fuel", "petrol", "diesel", "cab", "taxi", "rapido"] },
+    { category: "Utilities", keywords: ["electricity", "water", "gas", "wifi", "broadband", "mobile", "recharge", "bill"] },
+    { category: "Shopping", keywords: ["amazon", "flipkart", "myntra", "shopping", "store", "mall"] },
+    { category: "Health", keywords: ["pharmacy", "hospital", "clinic", "doctor", "medicine", "health"] },
+    { category: "Entertainment", keywords: ["netflix", "spotify", "movie", "cinema", "prime", "hotstar"] },
+    { category: "Investment", keywords: ["mutual fund", "sip", "zerodha", "groww", "upstox", "investment", "stocks", "equity", "nps"] },
+    { category: "Income", keywords: ["salary", "payroll", "income", "interest", "dividend", "refund", "cashback"] }
+];
 
 const MONTH_INDEX = {
     january: 0,
@@ -96,6 +111,23 @@ function parseCurrencyValue(value) {
     return Number.isFinite(parsed) ? Math.abs(parsed) : null;
 }
 
+function parseSignedCurrencyValue(value) {
+    if (value === null || value === undefined || value === "") {
+        return null;
+    }
+
+    const raw = String(value).trim();
+    const negativeByText = /\b(debit|withdrawal|paid|dr)\b/i.test(raw) || /^\(.*\)$/.test(raw);
+    const cleaned = raw.replace(/[^0-9.\-]/g, "");
+    const parsed = Number.parseFloat(cleaned);
+
+    if (!Number.isFinite(parsed)) {
+        return null;
+    }
+
+    return negativeByText && parsed > 0 ? -parsed : parsed;
+}
+
 function parseDateValue(value) {
     if (!value) {
         return null;
@@ -151,6 +183,100 @@ function buildUserExpenseRecord(row, index, sourceName) {
         amount,
         vendor: "",
         description: ""
+    };
+}
+
+function detectCategory(...values) {
+    const haystack = values
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+    const match = CATEGORY_RULES.find((rule) => rule.keywords.some((keyword) => haystack.includes(keyword)));
+    return match?.category || "Uncategorized";
+}
+
+function normalizeTransactionType(value) {
+    const normalized = String(value || "").toLowerCase();
+
+    if (/(income|credit|deposit|salary|refund|cashback|received|\bcr\b)/.test(normalized)) {
+        return "income";
+    }
+
+    if (/(invest|investment|sip|mutual|stock|equity|nps|zerodha|groww|upstox)/.test(normalized)) {
+        return "investment";
+    }
+
+    return "expense";
+}
+
+function inferTransactionType({ rawType, amount, category, description, vendor, debitAmount, creditAmount }) {
+    if (rawType) {
+        return normalizeTransactionType(rawType);
+    }
+
+    const textType = normalizeTransactionType(`${category} ${description} ${vendor}`);
+    if (textType === "investment") {
+        return "investment";
+    }
+
+    if (creditAmount !== null && creditAmount > 0) {
+        return "income";
+    }
+
+    if (debitAmount !== null && debitAmount > 0) {
+        return "expense";
+    }
+
+    if (textType !== "expense") {
+        return textType;
+    }
+
+    return amount < 0 ? "expense" : "expense";
+}
+
+function buildFlexibleUserRecord(row, index, sourceName, mapping) {
+    const date = mapping.date ? parseDateValue(row[mapping.date]) : null;
+    const rawDescription = mapping.description ? row[mapping.description] : "";
+    const rawVendor = mapping.vendor ? row[mapping.vendor] : "";
+    const rawCategory = mapping.category ? row[mapping.category] : "";
+    const rawType = mapping.type ? row[mapping.type] : "";
+    const rawDebit = mapping.debit ? parseCurrencyValue(row[mapping.debit]) : null;
+    const rawCredit = mapping.credit ? parseCurrencyValue(row[mapping.credit]) : null;
+    const signedAmount = mapping.amount ? parseSignedCurrencyValue(row[mapping.amount]) : null;
+
+    const amount = rawDebit !== null && rawDebit > 0
+        ? rawDebit
+        : rawCredit !== null && rawCredit > 0
+            ? rawCredit
+            : signedAmount !== null
+                ? Math.abs(signedAmount)
+                : null;
+
+    const category = String(rawCategory || detectCategory(rawVendor, rawDescription, rawType)).trim();
+    const transactionType = inferTransactionType({
+        rawType,
+        amount: signedAmount ?? amount ?? 0,
+        category,
+        description: rawDescription,
+        vendor: rawVendor,
+        debitAmount: rawDebit,
+        creditAmount: rawCredit
+    });
+
+    if (!date || amount === null || amount <= 0) {
+        return null;
+    }
+
+    return {
+        id: `${sourceName}-${index + 1}`,
+        date: date.toISOString().slice(0, 10),
+        category: transactionType === "income" && category === "Uncategorized" ? "Income" : category,
+        amount,
+        vendor: String(rawVendor || "").trim(),
+        description: String(rawDescription || "").trim(),
+        transactionType,
+        source: "user-import"
     };
 }
 
@@ -323,30 +449,12 @@ export function parseUserExpenseCsv(text, sourceName = "expenses.csv") {
     }
 
     const headers = splitCsvLine(lines[0], delimiter);
-    const normalizedHeaders = headers.map((header) => normalizeHeader(header));
-    const requiredHeaders = ["date", "category", "amountspent"];
-    const hasStrictHeaders = normalizedHeaders.length === requiredHeaders.length
-        && requiredHeaders.every((header) => normalizedHeaders.includes(header));
-
-    if (!hasStrictHeaders) {
-        return {
-            records: [],
-            issues: ["Expense import requires exactly these headers: date, category, amount_spent."]
-        };
-    }
-
-    const headerMap = headers.reduce((map, header, index) => {
-        map[normalizeHeader(header)] = headers[index];
-        return map;
-    }, {});
-
     const rows = lines.slice(1).map((line) => {
         const cells = splitCsvLine(line, delimiter);
-        return {
-            date: cells[headers.indexOf(headerMap.date)] ?? "",
-            category: cells[headers.indexOf(headerMap.category)] ?? "",
-            amount_spent: cells[headers.indexOf(headerMap.amountspent)] ?? ""
-        };
+        return headers.reduce((record, header, index) => {
+            record[header] = cells[index] ?? "";
+            return record;
+        }, {});
     });
 
     return parseUserExpenseRows(rows, sourceName);
@@ -360,34 +468,33 @@ export function parseUserExpenseRows(rows, sourceName = "expenses-import") {
         };
     }
 
-    const normalizedHeaderList = Object.keys(rows[0] || {}).map((key) => normalizeHeader(key));
-    const requiredNormalizedHeaders = ["date", "category", "amountspent"];
-    const hasStrictHeaders = normalizedHeaderList.length === requiredNormalizedHeaders.length
-        && requiredNormalizedHeaders.every((header) => normalizedHeaderList.includes(header));
+    const headers = Object.keys(rows[0] || {});
+    const mapping = {
+        date: findMappedHeader(headers, rows, "date"),
+        category: findMappedHeader(headers, rows, "category"),
+        amount: findMappedHeader(headers, rows, "amount"),
+        vendor: findMappedHeader(headers, rows, "vendor"),
+        description: findMappedHeader(headers, rows, "description"),
+        paymentMode: findMappedHeader(headers, rows, "paymentMode"),
+        type: findMappedHeader(headers, rows, "type"),
+        debit: findMappedHeader(headers, rows, "debit"),
+        credit: findMappedHeader(headers, rows, "credit")
+    };
 
-    if (!hasStrictHeaders) {
+    if (!mapping.date || (!mapping.amount && !mapping.debit && !mapping.credit)) {
         return {
             records: [],
-            issues: ["Expense import requires exactly these headers: date, category, amount_spent."]
+            issues: ["I could not detect date and amount columns. Include columns like date plus amount, debit, or credit."]
         };
     }
 
-    const normalizedRows = rows.map((row) => {
-        const normalized = {};
-        Object.entries(row || {}).forEach(([key, value]) => {
-            normalized[normalizeHeader(key)] = value;
-        });
-        return {
-            date: normalized.date ?? "",
-            category: normalized.category ?? "",
-            amount_spent: normalized.amountspent ?? ""
-        };
-    });
-
-    const records = normalizedRows.reduce((list, row, index) => {
-        const record = buildUserExpenseRecord(row, index, sourceName);
+    let invalidRowCount = 0;
+    const records = rows.reduce((list, row, index) => {
+        const record = buildFlexibleUserRecord(row, index, sourceName, mapping);
         if (record) {
             list.push(record);
+        } else {
+            invalidRowCount += 1;
         }
         return list;
     }, []);
@@ -395,12 +502,24 @@ export function parseUserExpenseRows(rows, sourceName = "expenses-import") {
     if (!records.length) {
         return {
             records: [],
-            issues: ["No valid expense rows were found. Check that every row has date, category, and amount_spent."]
+            issues: ["No valid transaction rows were found. Check that rows include a date and non-zero amount."]
         };
     }
 
+    const summary = records.reduce((totals, record) => {
+        totals[record.transactionType] = (totals[record.transactionType] || 0) + record.amount;
+        return totals;
+    }, { income: 0, expense: 0, investment: 0 });
+
     return {
         records,
-        issues: []
+        issues: [],
+        metadata: {
+            sourceName,
+            headers,
+            mapping,
+            invalidRowCount
+        },
+        summary
     };
 }

@@ -10,7 +10,7 @@ const numberFormatter = new Intl.NumberFormat("en-IN", {
 
 export function formatCurrency(value) {
     if (!Number.isFinite(value)) {
-        return "Rs 0";
+        return "₹0";
     }
 
     return currencyFormatter.format(value);
