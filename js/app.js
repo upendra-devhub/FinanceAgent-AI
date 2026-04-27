@@ -1,8 +1,8 @@
 import { buildReferenceBaseline } from "./baselineEngine.js";
 import {
     buildAutomatedInsightDigest,
-    buildGeminiSystemInstruction,
-    requestGeminiResponse,
+    buildGroqSystemInstruction,
+    requestGroqResponse,
     tryAnswerDirect
 } from "./chatService.js";
 import { parseExpenseCsv, parseUserExpenseCsv, parseUserExpenseRows } from "./csvParser.js";
@@ -494,17 +494,17 @@ async function sendMessage() {
 
     const apiKey = elements.apiKey.value.trim();
     if (!apiKey) {
-        appendAssistantMessage("I can answer many direct finance questions from the analysis layer already, but this one needs Gemini for a richer explanation. Add your API key from the profile menu to unlock that path.");
+        appendAssistantMessage("I can answer many direct finance questions from the analysis layer already, but this one needs an AI API for a richer explanation. Add your Groq API key from the profile menu to unlock that path.");
         return;
     }
 
     setLoadingState(elements.loader, elements.sendBtn, true);
     try {
-        const systemInstruction = buildGeminiSystemInstruction({
+        const systemInstruction = buildGroqSystemInstruction({
             baseline: state.baseline,
             userStats: state.userStats
         }, state.comparisonInsights);
-        const responseText = await requestGeminiResponse({
+        const responseText = await requestGroqResponse({
             apiKey,
             systemInstruction,
             conversationHistory: state.conversation

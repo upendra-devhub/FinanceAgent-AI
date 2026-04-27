@@ -311,27 +311,89 @@ Rule engine findings:
 ${formatRuleSummary(ruleInsights)}`;
 }
 
-export async function requestGeminiResponse({ apiKey, systemInstruction, conversationHistory }) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+function convertConversationToGroqFormat(conversationHistory) {
+    return conversationHistory.slice(-12).map((msg) => ({
+        role: msg.role === "model" ? "assistant" : "user",
+        content: msg.parts?.[0]?.text || ""
+    }));
+}
+
+export function buildGroqSystemInstruction(snapshot, ruleInsights) {
+    const topCategories = snapshot.userStats.categories.list.slice(0, 5)
+        .map((item) => {
+            const baselineCategory = snapshot.baseline.categories.byName.get(item.name);
+            const baselineMedian = baselineCategory?.shareDistribution.median ?? 0;
+            return `${item.name}: user=${formatCurrency(item.total)} (${formatPercent(item.share)}), reference median share=${formatPercent(baselineMedian)}`;
+        })
+        .join("\n");
+
+    const monthlyTrend = snapshot.userStats.monthly.trend.slice(-6)
+        .map((item) => `${item.label}: user=${formatCurrency(item.total)} from ${formatNumber(item.count)} expenses`)
+        .join("\n");
+
+    return `You are FinanceAgent AI, a personal finance assistant that must reason from supplied analysis, not invented facts.
+
+Rules:
+1. Stay inside personal finance, budgeting, saving, cash flow, and investment planning topics.
+2. Never fabricate dataset details. If the context is missing something, say so plainly.
+3. ALWAYS respond in 10 or 15 lines MAX. No exceptions. If you're going over, cut it.
+4. Use bullet points (•) for ALL insights — never write long paragraphs.
+5. Use 1 or 2 relevant emojis per response (e.g. ✅ 📉 💡 ⚠️ 📈) — not on every line, just where it adds clarity.
+6. Start with ONE short sentence summarizing the answer, then bullets, then ONE action line at the end.
+7. Never write "Next Steps:", "Important Caveat:", or "Disclaimer:" sections — just say it naturally.
+8. Treat the CSV as a hidden reference corpus only. Do not present it as the user's own data.
+9. Combine baseline, user expenses, and financial profile in your reasoning — but show only the useful output.
+10. Sound like a sharp, friendly advisor texting you — not a financial report.
+
+Structured finance context:
+- User monthly income: ${formatCurrency(snapshot.userStats.profile.income)}
+- User current savings: ${formatCurrency(snapshot.userStats.profile.savings)}
+- User monthly savings goal: ${formatCurrency(snapshot.userStats.profile.goal)}
+- User mandatory monthly expenses: ${formatCurrency(snapshot.userStats.profile.mandatoryTotal)}
+- User current spend: ${formatCurrency(snapshot.userStats.comparisons.currentSpend)}
+- User current monthly outflow: ${formatCurrency(snapshot.userStats.comparisons.totalMonthlyOutflow)}
+- User savings capacity: ${snapshot.userStats.comparisons.savingsCapacity !== null ? formatCurrency(snapshot.userStats.comparisons.savingsCapacity) : "Not available"}
+- User savings rate: ${snapshot.userStats.comparisons.actualSavingsRate !== null ? formatPercent(snapshot.userStats.comparisons.actualSavingsRate) : "Not available"}
+- User target savings rate: ${snapshot.userStats.comparisons.targetSavingsRate !== null ? formatPercent(snapshot.userStats.comparisons.targetSavingsRate) : "Not available"}
+- Hidden baseline median month: ${formatCurrency(snapshot.baseline.monthly.totalDistribution.median)}`;
+}
+
+export async function requestGroqResponse({ apiKey, systemInstruction, conversationHistory }) {
+    const url = "https://api.groq.com/openai/v1/chat/completions";
+    const messages = [
+        { role: "system", content: systemInstruction },
+        ...convertConversationToGroqFormat(conversationHistory)
+    ];
+
     const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemInstruction }] },
-            contents: conversationHistory.slice(-12)
+            model: "llama-3.3-70b-versatile",
+            messages: messages,
+            max_tokens: 1024,
+            temperature: 0.7
         })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.error?.message || "Gemini API request failed.");
+        throw new Error(data.error?.message || "Groq API request failed.");
     }
 
-    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const aiText = data.choices?.[0]?.message?.content;
     if (!aiText) {
-        throw new Error("Gemini returned an empty response.");
+        throw new Error("Groq returned an empty response.");
     }
 
     return aiText;
+}
+
+// Keep old function for backward compatibility, but delegate to new Groq function
+export async function requestGeminiResponse({ apiKey, systemInstruction, conversationHistory }) {
+    return requestGroqResponse({ apiKey, systemInstruction, conversationHistory });
 }
