@@ -123,6 +123,33 @@
                     <p>Upload your financial statements or raw transaction data for AI categorization.</p>
                 </div>
 
+                <div class="analysis-month-switcher">
+                    <div class="analysis-month-switcher-copy">
+                        <p class="month-state-kicker">Archive Browser</p>
+                        <h3>Switch Month View</h3>
+                        <p id="currentMonthIndicator" class="current-month-indicator">Currently viewing: April 2026</p>
+                    </div>
+                    <div class="analysis-month-controls">
+                        <label class="month-toolbar-field">
+                            <span>Month</span>
+                            <select id="activeMonthSelect"></select>
+                        </label>
+                        <label class="month-toolbar-field year-field">
+                            <span>Year</span>
+                            <input type="number" id="activeYearInput" min="2000" max="2100" step="1">
+                        </label>
+                    </div>
+                </div>
+
+                <div id="monthStateCard" class="month-state-card">
+                    <div>
+                        <p class="month-state-kicker">Active Month</p>
+                        <h3 id="monthStateTitle">April 2026</h3>
+                        <p id="monthStateMessage">No expenses logged for April 2026</p>
+                    </div>
+                    <button type="button" class="button" id="completeMonthBtn">Mark Month as Complete</button>
+                </div>
+
                 <div class="upload-zone" id="uploadZone">
                     <div class="upload-orb">
                         <span class="material-symbols-outlined">cloud_upload</span>
@@ -147,7 +174,7 @@
                         <h2>Financial Overview</h2>
                         <p>Your wealth at a glance, updated just now.</p>
                     </div>
-                    <span class="date-pill">Last 30 Days</span>
+                    <span class="date-pill" id="dashboardMonthBadge">April 2026</span>
                 </div>
 
                 <div id="userCards" class="summary-grid"></div>
@@ -229,6 +256,10 @@
             </div>
 
             <label class="field">
+                <span>Log Expense For</span>
+                <select id="expenseMonth"></select>
+            </label>
+            <label class="field">
                 <span>Date</span>
                 <input type="date" id="expDate">
             </label>
@@ -284,6 +315,24 @@
             <div class="modal-actions">
                 <button type="button" class="button subtle-button" id="cancelClearTransactionsBtn">Cancel</button>
                 <button type="button" class="button danger-button" id="confirmClearTransactionsBtn">Clear Transactions</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="completeMonthModal" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-heading">
+                <h3 id="completeMonthTitle">Complete Month</h3>
+                <p>Review your monthly spending and confirm to archive this month and update savings.</p>
+            </div>
+
+            <div id="completeMonthSummary" style="display: grid; gap: 12px; margin: 16px 0; padding: 12px; background: rgba(250, 249, 246, 0.5); border-radius: 8px;">
+                <!-- Summary lines will be inserted here -->
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="button subtle-button" id="cancelCompleteMonthBtn">Cancel</button>
+                <button type="button" class="button" id="confirmCompleteMonthBtn">Confirm & Update Savings</button>
             </div>
         </div>
     </div>

@@ -1,3 +1,5 @@
+import { buildMonthContextFromDate } from "./monthlyManager.js";
+
 const FIELD_KEYWORDS = {
     date: ["date", "transactiondate", "spenton", "purchasedate", "entrydate"],
     category: ["category", "type", "group", "bucket", "segment", "tag"],
@@ -286,9 +288,13 @@ function buildFlexibleUserRecord(row, index, sourceName, mapping) {
         return null;
     }
 
+    const monthContext = buildMonthContextFromDate(date);
+
     return {
         id: `${sourceName}-${index + 1}`,
         date: date.toISOString().slice(0, 10),
+        month: monthContext?.month || "",
+        year: monthContext?.year || "",
         category: transactionType === "income" && category === "Uncategorized" ? "Income" : category,
         amount,
         vendor: String(rawVendor || "").trim(),
@@ -534,6 +540,16 @@ export function parseUserExpenseRows(rows, sourceName = "expenses-import") {
         return totals;
     }, { income: 0, expense: 0, investment: 0 });
 
+    const detectedMonths = Array.from(new Set(records.map((record) => `${record.month}-${record.year}`)))
+        .map((value) => {
+            const [month, year] = value.split("-");
+            return {
+                month,
+                year: Number.parseInt(year, 10),
+                label: `${month} ${year}`
+            };
+        });
+
     return {
         records,
         issues: [],
@@ -541,7 +557,8 @@ export function parseUserExpenseRows(rows, sourceName = "expenses-import") {
             sourceName,
             headers,
             mapping,
-            invalidRowCount
+            invalidRowCount,
+            detectedMonths
         },
         summary
     };

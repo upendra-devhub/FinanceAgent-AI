@@ -8,17 +8,38 @@ import {
 import { parseExpenseCsv, parseUserExpenseCsv, parseUserExpenseRows } from "./csvParser.js";
 import { formatCurrency } from "./formatters.js";
 import { getFinancialProfile } from "./profileManager.js";
+import {
+    MONTH_NAMES,
+    buildMonthContext,
+    buildMonthContextFromDate,
+    calculateMonthCompletion,
+    filterExpensesByMonth,
+    formatCompletionSummary,
+    getAvailableMonths,
+    getCurrentMonthContext,
+    getNextMonthContext,
+    isExpenseInMonth,
+    isMonthCompleted,
+    normalizeExpenseRecord
+} from "./monthlyManager.js";
 import { generateComparisonInsights } from "./rulesEngine.js";
 import {
     clearAllStoredData,
+    getActiveMonthSelection,
     getApiKey,
+    getCompletedMonthExpenses,
+    getCompletedMonths,
     getConversation,
     getExpenses,
     getLastInsightSignature,
+    getProfile,
+    saveActiveMonth,
     saveApiKey,
+    saveCompletedMonth,
     saveConversation,
     saveExpenses,
-    saveLastInsightSignature
+    saveLastInsightSignature,
+    saveProfileField
 } from "./storage.js";
 import { buildUserStats } from "./userStats.js";
 import {
@@ -52,11 +73,19 @@ const state = {
     comparisonInsights: null,
     lastInsightSignature: "",
     currentView: getInitialView(),
-    pendingImport: null
+    pendingImport: null,
+    pendingMonthCompletion: null,
+    activeMonthContext: getCurrentMonthContext()
 };
 
 const elements = {
     apiKey: document.getElementById("apiKey"),
+    activeMonthSelect: document.getElementById("activeMonthSelect"),
+    activeYearInput: document.getElementById("activeYearInput"),
+    currentMonthIndicator: document.getElementById("currentMonthIndicator"),
+    monthStateTitle: document.getElementById("monthStateTitle"),
+    monthStateMessage: document.getElementById("monthStateMessage"),
+    dashboardMonthBadge: document.getElementById("dashboardMonthBadge"),
     viewTitle: document.getElementById("viewTitle"),
     viewSubtitle: document.getElementById("viewSubtitle"),
     viewButtons: document.querySelectorAll("[data-view-target]"),
@@ -78,6 +107,9 @@ const elements = {
     expenseModal: document.getElementById("expenseModal"),
     resetModal: document.getElementById("resetModal"),
     clearTransactionsModal: document.getElementById("clearTransactionsModal"),
+    completeMonthModal: document.getElementById("completeMonthModal"),
+    expenseMonth: document.getElementById("expenseMonth"),
+    completeMonthBtn: document.getElementById("completeMonthBtn"),
     expDate: document.getElementById("expDate"),
     expCategory: document.getElementById("expCategory"),
     expVendor: document.getElementById("expVendor"),
@@ -92,6 +124,10 @@ const elements = {
     confirmResetBtn: document.getElementById("confirmResetBtn"),
     cancelClearTransactionsBtn: document.getElementById("cancelClearTransactionsBtn"),
     confirmClearTransactionsBtn: document.getElementById("confirmClearTransactionsBtn"),
+    cancelCompleteMonthBtn: document.getElementById("cancelCompleteMonthBtn"),
+    confirmCompleteMonthBtn: document.getElementById("confirmCompleteMonthBtn"),
+    completeMonthTitle: document.getElementById("completeMonthTitle"),
+    completeMonthSummary: document.getElementById("completeMonthSummary"),
     chatHistoryBox: document.getElementById("chatHistoryBox"),
     chatInput: document.getElementById("chatInput"),
     sendBtn: document.getElementById("sendBtn"),
@@ -136,12 +172,21 @@ function appendAssistantMessage(text) {
     addConversationMessage("model", text);
 }
 
+function resetConversationState() {
+    state.conversation = [];
+    persistConversation();
+    state.lastInsightSignature = "";
+    saveLastInsightSignature("");
+    renderChatHistory(elements.chatHistoryBox, state.conversation, DEFAULT_CHAT_MESSAGE);
+}
+
 function setActiveView(viewName) {
     state.currentView = VIEW_TITLES[viewName] ? viewName : "chat";
     document.body.dataset.view = state.currentView;
     if (window.location.hash.replace("#", "") !== state.currentView) {
         window.history.replaceState(null, "", `#${state.currentView}`);
     }
+
     elements.viewTitle.textContent = VIEW_TITLES[state.currentView].title;
     elements.viewSubtitle.textContent = VIEW_TITLES[state.currentView].subtitle;
 
@@ -156,6 +201,102 @@ function setActiveView(viewName) {
 
 function currentProfileValues() {
     return getFinancialProfile().values;
+}
+
+function getActiveMonthExpenses() {
+    return filterExpensesByMonth(state.manualExpenses, state.activeMonthContext);
+}
+
+function getArchivedActiveMonthExpenses() {
+    return getCompletedMonthExpenses(state.activeMonthContext.month, state.activeMonthContext.year);
+}
+
+function getAnalysisExpensesForActiveMonth() {
+    const archivedExpenses = getArchivedActiveMonthExpenses();
+    if (archivedExpenses.length) {
+        return archivedExpenses;
+    }
+
+    return getActiveMonthExpenses();
+}
+
+function isActiveMonthClosed() {
+    return isMonthCompleted(getCompletedMonths(), state.activeMonthContext);
+}
+
+function buildMonthEmptyMessage() {
+    const analysisExpenses = getAnalysisExpensesForActiveMonth();
+
+    if (isActiveMonthClosed() && !analysisExpenses.length) {
+        return "No archived transactions were found for this closed month.";
+    }
+
+    return `No expenses logged for ${state.activeMonthContext.label}`;
+}
+
+function syncMonthControls() {
+    const availableMonths = getAvailableMonths(state.manualExpenses, getCompletedMonths());
+    const monthKeys = new Set(availableMonths.map((item) => item.monthKey));
+
+    if (!monthKeys.has(state.activeMonthContext.monthKey)) {
+        availableMonths.unshift(state.activeMonthContext);
+    }
+
+    elements.activeMonthSelect.innerHTML = MONTH_NAMES.map((month) => `
+        <option value="${month}">${month}</option>
+    `).join("");
+    elements.activeMonthSelect.value = state.activeMonthContext.month;
+    elements.activeYearInput.value = String(state.activeMonthContext.year);
+
+    elements.expenseMonth.innerHTML = `<option value="${state.activeMonthContext.monthKey}">${state.activeMonthContext.label}</option>`;
+    elements.expenseMonth.value = state.activeMonthContext.monthKey;
+    elements.expenseMonth.disabled = true;
+}
+
+function buildDateForActiveMonth(day = 1) {
+    const maxDay = new Date(state.activeMonthContext.year, state.activeMonthContext.monthIndex + 1, 0).getDate();
+    const safeDay = Math.max(1, Math.min(day, maxDay));
+    return new Date(state.activeMonthContext.year, state.activeMonthContext.monthIndex, safeDay, 12)
+        .toISOString()
+        .slice(0, 10);
+}
+
+function syncExpenseDateToActiveMonth() {
+    const selectedContext = buildMonthContextFromDate(elements.expDate.value);
+    if (selectedContext?.monthKey === state.activeMonthContext.monthKey) {
+        return;
+    }
+
+    const today = new Date();
+    const preferredDay = today.getMonth() === state.activeMonthContext.monthIndex && today.getFullYear() === state.activeMonthContext.year
+        ? today.getDate()
+        : 1;
+    elements.expDate.value = buildDateForActiveMonth(preferredDay);
+}
+
+function updateMonthUI(activeExpenses = getAnalysisExpensesForActiveMonth()) {
+    const isClosed = isActiveMonthClosed();
+    const expenseCount = activeExpenses.length;
+
+    elements.currentMonthIndicator.textContent = `Currently viewing: ${state.activeMonthContext.label}`;
+    elements.dashboardMonthBadge.textContent = state.activeMonthContext.label;
+    elements.monthStateTitle.textContent = state.activeMonthContext.label;
+
+    if (isClosed) {
+        elements.monthStateMessage.textContent = expenseCount
+            ? `This month is closed. Showing ${expenseCount} archived transactions for comparison.`
+            : "This month is closed and no archived transactions were found.";
+        elements.completeMonthBtn.textContent = "Month Closed";
+        elements.completeMonthBtn.disabled = true;
+    } else if (!expenseCount) {
+        elements.monthStateMessage.textContent = `No expenses logged for ${state.activeMonthContext.label}`;
+        elements.completeMonthBtn.textContent = "Mark Month as Complete";
+        elements.completeMonthBtn.disabled = false;
+    } else {
+        elements.monthStateMessage.textContent = `${expenseCount} transactions are being analyzed for ${state.activeMonthContext.label}.`;
+        elements.completeMonthBtn.textContent = "Mark Month as Complete";
+        elements.completeMonthBtn.disabled = false;
+    }
 }
 
 function publishAutomatedInsights(force = false) {
@@ -186,10 +327,15 @@ function publishAutomatedInsights(force = false) {
 }
 
 function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {}) {
+    const activeExpenses = getAnalysisExpensesForActiveMonth();
+    const emptyMonthMessage = buildMonthEmptyMessage();
+    const isClosed = isActiveMonthClosed();
+
     state.baseline = buildReferenceBaseline(state.datasetRecords);
     state.userStats = buildUserStats({
-        manualExpenses: state.manualExpenses,
-        profile: currentProfileValues()
+        manualExpenses: activeExpenses,
+        profile: currentProfileValues(),
+        activeMonthContext: state.activeMonthContext
     });
     state.comparisonInsights = generateComparisonInsights({
         baseline: state.baseline,
@@ -197,8 +343,17 @@ function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {})
     });
 
     renderUserCards(elements.userCards, state.userStats, state.comparisonInsights);
-    renderCategoryComparison(elements.categoryComparison, state.comparisonInsights.categoryComparisons, state.comparisonInsights, state.baseline);
-    renderExpenseList(elements.expenseList, state.manualExpenses);
+    renderCategoryComparison(
+        elements.categoryComparison,
+        state.comparisonInsights.categoryComparisons,
+        state.comparisonInsights,
+        state.baseline
+    );
+    renderExpenseList(elements.expenseList, activeExpenses, {
+        activeMonthLabel: state.activeMonthContext.label,
+        isClosed,
+        readOnly: isClosed
+    });
     renderInsightCards(elements.insightRailCards, state.comparisonInsights, 1);
     renderDashboardVisuals({
         categoryDonut: elements.categoryDonut,
@@ -206,7 +361,9 @@ function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {})
         savingsProgress: elements.savingsProgress,
         investmentAllocation: elements.investmentAllocation,
         dashboardInsights: elements.dashboardInsights
-    }, state.userStats, state.comparisonInsights);
+    }, state.userStats, state.comparisonInsights, {
+        emptyMonthMessage
+    });
 
     const categories = [
         ...state.baseline.categories.list.map((item) => item.name),
@@ -214,6 +371,10 @@ function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {})
         "Other"
     ];
     populateCategoryOptions(elements.expCategory, categories);
+    syncMonthControls();
+    syncExpenseDateToActiveMonth();
+    updateMonthUI(activeExpenses);
+
     if (document.getElementById("taxEstimate")) {
         const taxEstimate = Math.max((state.userStats.comparisons.currentSpend || 0) * 0.08, 0);
         document.getElementById("taxEstimate").textContent = formatCurrency(taxEstimate);
@@ -224,7 +385,49 @@ function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {})
     }
 }
 
+function setActiveMonthContext(context, options = {}) {
+    const nextContext = buildMonthContext(context.month, context.year);
+    const isSameMonth = nextContext.monthKey === state.activeMonthContext.monthKey;
+
+    if (isSameMonth) {
+        syncMonthControls();
+        syncExpenseDateToActiveMonth();
+        rebuildAnalysis({ publishInsights: false, forceInsight: false });
+        return;
+    }
+
+    state.activeMonthContext = nextContext;
+    saveActiveMonth(nextContext.month, nextContext.year);
+    state.pendingImport = null;
+    renderUploadPreview(elements.uploadPreview, null);
+    setImportStatus("", "neutral");
+
+    if (options.resetConversation) {
+        resetConversationState();
+    }
+
+    rebuildAnalysis({
+        publishInsights: !options.resetConversation && options.publishInsights,
+        forceInsight: options.forceInsight
+    });
+
+    if (options.announceMessage) {
+        appendAssistantMessage(options.announceMessage);
+    }
+
+    if (!isSameMonth && options.switchToView) {
+        setActiveView(options.switchToView);
+    }
+}
+
 function openExpenseModal() {
+    if (isActiveMonthClosed()) {
+        appendAssistantMessage("This month is closed. Start a new month to continue.");
+        return;
+    }
+
+    syncMonthControls();
+    syncExpenseDateToActiveMonth();
     elements.expenseModal.classList.add("open");
     elements.expenseModal.setAttribute("aria-hidden", "false");
 }
@@ -257,36 +460,125 @@ function closeClearTransactionsModal() {
     elements.clearTransactionsModal.setAttribute("aria-hidden", "true");
 }
 
+function openCompleteMonthModal() {
+    if (isActiveMonthClosed()) {
+        appendAssistantMessage("This month is already closed. Switch to a new month to continue.");
+        return;
+    }
+
+    const profile = getProfile();
+    const completionData = calculateMonthCompletion(
+        state.activeMonthContext,
+        state.manualExpenses,
+        profile,
+        profile.savings
+    );
+    const summary = formatCompletionSummary(completionData);
+
+    elements.completeMonthTitle.textContent = summary.title;
+    elements.completeMonthSummary.innerHTML = summary.lines.map((line) => `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>${line.label}</span>
+            <strong style="color: var(--on-surface);">${formatCurrency(line.value)}</strong>
+        </div>
+    `).join("");
+
+    state.pendingMonthCompletion = completionData;
+    elements.completeMonthModal.classList.add("open");
+    elements.completeMonthModal.setAttribute("aria-hidden", "false");
+}
+
+function closeCompleteMonthModal() {
+    elements.completeMonthModal.classList.remove("open");
+    elements.completeMonthModal.setAttribute("aria-hidden", "true");
+    state.pendingMonthCompletion = null;
+}
+
+function handleConfirmCompleteMonth() {
+    if (!state.pendingMonthCompletion) {
+        return;
+    }
+
+    const completion = state.pendingMonthCompletion;
+
+    saveProfileField("savings", String(completion.newSavings));
+    saveCompletedMonth(completion.month, completion.year, completion.expenses);
+
+    state.manualExpenses = state.manualExpenses.filter((expense) => !isExpenseInMonth(expense, completion));
+    saveExpenses(state.manualExpenses);
+
+    closeCompleteMonthModal();
+    state.pendingImport = null;
+    renderUploadPreview(elements.uploadPreview, null);
+    setImportStatus(`${completion.label} archived successfully.`, "success");
+
+    const nextContext = getNextMonthContext(completion);
+    setActiveMonthContext(nextContext, {
+        resetConversation: true,
+        announceMessage: `${completion.label} marked as complete. You can now start logging expenses for the next month.`,
+        switchToView: "expenses"
+    });
+}
+
 function setImportStatus(message = "", tone = "neutral") {
     renderImportStatus(elements.importStatus, message ? { message, tone } : null);
 }
 
 function createExpenseKey(expense) {
+    const normalized = normalizeExpenseRecord(expense);
+
     return [
-        String(expense.date || "").trim(),
-        String(expense.category || "").trim().toLowerCase(),
-        Number(expense.amount || 0).toFixed(2),
-        String(expense.transactionType || "expense").trim().toLowerCase()
+        String(normalized.date || "").trim(),
+        String(normalized.category || "").trim().toLowerCase(),
+        Number(normalized.amount || 0).toFixed(2),
+        String(normalized.transactionType || "expense").trim().toLowerCase(),
+        String(normalized.month || "").trim().toLowerCase(),
+        String(normalized.year || "").trim()
     ].join("|");
+}
+
+function getDetectedMonthContexts(records = []) {
+    const monthMap = new Map();
+
+    records.forEach((record) => {
+        const context = buildMonthContextFromDate(record.date)
+            || (record.month && record.year ? buildMonthContext(record.month, record.year) : null);
+        if (context) {
+            monthMap.set(context.monthKey, context);
+        }
+    });
+
+    return Array.from(monthMap.values()).sort((left, right) => left.monthKey.localeCompare(right.monthKey));
 }
 
 function mergeImportedExpenses(records) {
     const existingKeys = new Set(state.manualExpenses.map(createExpenseKey));
+    const completedMonths = getCompletedMonths();
     const imported = [];
+    const completedMonthsSkipped = new Set();
     let duplicateCount = 0;
+    let completedMonthCount = 0;
 
     records.forEach((record) => {
-        const normalizedExpense = {
-            id: Date.now() + imported.length + duplicateCount,
+        const normalizedExpense = normalizeExpenseRecord({
+            id: Date.now() + imported.length + duplicateCount + completedMonthCount,
             date: record.date,
             category: record.category,
             amount: record.amount,
+            month: record.month,
+            year: record.year,
             vendor: record.vendor || "",
             description: record.description || "",
             transactionType: record.transactionType || "expense",
-            source: record.source || "user"
-        };
+            source: record.source || "user-import"
+        });
         const key = createExpenseKey(normalizedExpense);
+
+        if (completedMonths[buildMonthContext(normalizedExpense.month, normalizedExpense.year).archiveKey]) {
+            completedMonthsSkipped.add(`${normalizedExpense.month} ${normalizedExpense.year}`);
+            completedMonthCount += 1;
+            return;
+        }
 
         if (existingKeys.has(key)) {
             duplicateCount += 1;
@@ -299,7 +591,9 @@ function mergeImportedExpenses(records) {
 
     return {
         imported,
-        duplicateCount
+        duplicateCount,
+        completedMonthCount,
+        completedMonthsList: Array.from(completedMonthsSkipped)
     };
 }
 
@@ -353,18 +647,29 @@ async function loadBundledDataset() {
 }
 
 function handleSaveExpense() {
+    if (isActiveMonthClosed()) {
+        appendAssistantMessage("This month is closed. Start a new month to continue.");
+        return;
+    }
+
     const date = elements.expDate.value;
     const category = elements.expCategory.value;
     const vendor = elements.expVendor.value.trim();
     const description = elements.expDescription.value.trim();
     const amount = elements.expAmount.value.trim();
+    const dateContext = buildMonthContextFromDate(date);
 
     if (!date || !category || !amount) {
         appendAssistantMessage("Please enter a date, category, and amount before saving the expense.");
         return;
     }
 
-    const expense = {
+    if (!dateContext || dateContext.monthKey !== state.activeMonthContext.monthKey) {
+        appendAssistantMessage(`Please choose a date inside ${state.activeMonthContext.label} so the expense stays in the active month.`);
+        return;
+    }
+
+    const expense = normalizeExpenseRecord({
         id: Date.now(),
         date,
         category,
@@ -372,7 +677,7 @@ function handleSaveExpense() {
         description,
         amount,
         transactionType: "expense"
-    };
+    });
 
     state.manualExpenses.push(expense);
     saveExpenses(state.manualExpenses);
@@ -424,18 +729,38 @@ async function handleExpenseFileImport(event) {
         return;
     }
 
+    const detectedMonths = parsed.metadata?.detectedMonths?.length
+        ? parsed.metadata.detectedMonths.map((item) => buildMonthContext(item.month, item.year))
+        : getDetectedMonthContexts(parsed.records);
+
+    if (detectedMonths.length === 1 && detectedMonths[0].monthKey !== state.activeMonthContext.monthKey) {
+        setActiveMonthContext(detectedMonths[0], {
+            resetConversation: true,
+            announceMessage: `Switched active month to ${detectedMonths[0].label} to match ${file.name}.`,
+            switchToView: "expenses"
+        });
+    } else {
+        setActiveView("expenses");
+    }
+
     state.pendingImport = {
         fileName: file.name,
         parsed
     };
+
     const invalidRowCount = parsed.metadata?.invalidRowCount || 0;
+    const monthSummary = detectedMonths.length === 1
+        ? ` for ${detectedMonths[0].label}`
+        : detectedMonths.length > 1
+            ? ` across ${detectedMonths.length} months`
+            : "";
+
     renderUploadPreview(elements.uploadPreview, parsed);
     setImportStatus(
-        `Ready to import ${parsed.records.length} transactions${invalidRowCount ? `. ${invalidRowCount} invalid rows were skipped during parsing.` : "."}`,
+        `Ready to import ${parsed.records.length} transactions${monthSummary}${invalidRowCount ? `. ${invalidRowCount} invalid rows were skipped during parsing.` : "."}`,
         "neutral"
     );
-    setActiveView("expenses");
-    appendAssistantMessage(`I parsed ${parsed.records.length} transactions from ${file.name}.${invalidRowCount ? ` ${invalidRowCount} invalid rows were skipped.` : ""} Review the preview, then confirm the import.`);
+    appendAssistantMessage(`I parsed ${parsed.records.length} transactions from ${file.name}${monthSummary}.${invalidRowCount ? ` ${invalidRowCount} invalid rows were skipped.` : ""} Review the preview, then confirm the import.`);
     event.target.value = "";
 }
 
@@ -445,10 +770,20 @@ function confirmPendingImport() {
     }
 
     const { fileName, parsed } = state.pendingImport;
-    const { imported, duplicateCount } = mergeImportedExpenses(parsed.records);
+    const { imported, duplicateCount, completedMonthCount, completedMonthsList } = mergeImportedExpenses(parsed.records);
+
+    if (completedMonthCount > 0) {
+        const warningMsg = `Skipped ${completedMonthCount} transaction(s) from completed month(s): ${completedMonthsList.join(", ")}.`;
+        setImportStatus(warningMsg, "warning");
+        appendAssistantMessage(warningMsg);
+    }
+
     if (!imported.length) {
-        setImportStatus("No new transactions were added because every parsed row already exists in your data.", "warning");
-        appendAssistantMessage("I could not add any new expenses from that file because every row was already present or invalid.");
+        const detail = completedMonthCount > 0
+            ? "All transactions in this file belong to months you already closed."
+            : "No new transactions were added because every parsed row already exists in your data or is invalid.";
+        setImportStatus(detail, "warning");
+        appendAssistantMessage(`I could not add any new expenses from ${fileName} because ${detail.toLowerCase()}`);
         state.pendingImport = null;
         renderUploadPreview(elements.uploadPreview, null);
         return;
@@ -459,11 +794,21 @@ function confirmPendingImport() {
     state.pendingImport = null;
     renderUploadPreview(elements.uploadPreview, null);
     rebuildAnalysis({ publishInsights: true, forceInsight: true });
-    setImportStatus(
-        `${imported.length} transactions added${duplicateCount ? `. ${duplicateCount} duplicate rows skipped.` : "."}`,
-        "success"
-    );
-    appendAssistantMessage(`Imported ${imported.length} transactions from ${fileName}.${duplicateCount ? ` Skipped ${duplicateCount} duplicate rows.` : ""}`);
+
+    let statusMsg = `${imported.length} transactions added`;
+    let assistantMsg = `Imported ${imported.length} transactions from ${fileName}.`;
+
+    if (duplicateCount) {
+        statusMsg += ` ${duplicateCount} duplicate rows skipped.`;
+        assistantMsg += ` Skipped ${duplicateCount} duplicate rows.`;
+    }
+    if (completedMonthCount) {
+        statusMsg += ` ${completedMonthCount} transactions from completed months were skipped.`;
+        assistantMsg += ` ${completedMonthCount} transactions from completed months were not imported.`;
+    }
+
+    setImportStatus(statusMsg, "success");
+    appendAssistantMessage(assistantMsg);
     setActiveView("dashboard");
 }
 
@@ -547,6 +892,8 @@ function clearAllData() {
     state.lastInsightSignature = "";
     state.userStats = null;
     state.comparisonInsights = null;
+    state.activeMonthContext = getCurrentMonthContext();
+    saveActiveMonth(state.activeMonthContext.month, state.activeMonthContext.year);
 
     elements.apiKey.value = "";
     elements.expenseFileInput.value = "";
@@ -556,7 +903,10 @@ function clearAllData() {
     closeExpenseModal();
     closeResetModal();
     closeClearTransactionsModal();
+    closeCompleteMonthModal();
     renderChatHistory(elements.chatHistoryBox, state.conversation, DEFAULT_CHAT_MESSAGE);
+    syncMonthControls();
+    syncExpenseDateToActiveMonth();
     rebuildAnalysis({ publishInsights: false });
     setActiveView("chat");
 }
@@ -573,11 +923,27 @@ function bindEvents() {
             closeExpenseModal();
             closeResetModal();
             closeClearTransactionsModal();
+            closeCompleteMonthModal();
             cancelPendingImport();
         }
     });
 
     elements.apiKey.addEventListener("input", (event) => saveApiKey(event.target.value));
+    elements.activeMonthSelect.addEventListener("change", () => {
+        const nextContext = buildMonthContext(elements.activeMonthSelect.value, elements.activeYearInput.value);
+        setActiveMonthContext(nextContext, {
+            resetConversation: true,
+            announceMessage: `Active month set to ${nextContext.label}. Chat context was reset so analysis stays month-specific.`
+        });
+    });
+    elements.activeYearInput.addEventListener("change", () => {
+        const nextContext = buildMonthContext(elements.activeMonthSelect.value, elements.activeYearInput.value);
+        setActiveMonthContext(nextContext, {
+            resetConversation: true,
+            announceMessage: `Active month set to ${nextContext.label}. Chat context was reset so analysis stays month-specific.`
+        });
+    });
+
     elements.openExpenseModalBtn.addEventListener("click", openExpenseModal);
     elements.contextAddBtn.addEventListener("click", openExpenseModal);
     elements.floatingExpenseBtn.addEventListener("click", openExpenseModal);
@@ -667,18 +1033,29 @@ function bindEvents() {
     elements.confirmResetBtn.addEventListener("click", clearAllData);
     elements.cancelClearTransactionsBtn.addEventListener("click", closeClearTransactionsModal);
     elements.confirmClearTransactionsBtn.addEventListener("click", clearAllTransactions);
+    elements.cancelCompleteMonthBtn.addEventListener("click", closeCompleteMonthModal);
+    elements.confirmCompleteMonthBtn.addEventListener("click", handleConfirmCompleteMonth);
+    elements.completeMonthModal.addEventListener("click", (event) => {
+        if (event.target === elements.completeMonthModal) {
+            closeCompleteMonthModal();
+        }
+    });
+    elements.completeMonthBtn.addEventListener("click", openCompleteMonthModal);
     window.addEventListener("focus", () => rebuildAnalysis({ publishInsights: true }));
     window.addEventListener("hashchange", () => setActiveView(getInitialView()));
 }
 
 async function init() {
     elements.apiKey.value = getApiKey();
-    state.manualExpenses = getExpenses();
+    state.manualExpenses = getExpenses().map((expense) => normalizeExpenseRecord(expense));
+    saveExpenses(state.manualExpenses);
+    state.activeMonthContext = getActiveMonthSelection(state.manualExpenses);
     state.conversation = getConversation();
     state.lastInsightSignature = getLastInsightSignature();
-    renderChatHistory(elements.chatHistoryBox, state.conversation, DEFAULT_CHAT_MESSAGE);
 
-    elements.expDate.value = new Date().toISOString().slice(0, 10);
+    renderChatHistory(elements.chatHistoryBox, state.conversation, DEFAULT_CHAT_MESSAGE);
+    syncMonthControls();
+    syncExpenseDateToActiveMonth();
 
     bindEvents();
 

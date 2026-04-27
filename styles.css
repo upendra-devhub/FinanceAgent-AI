@@ -233,11 +233,8 @@ a {
     border-bottom: 1px solid rgba(198, 197, 214, 0.22);
     display: flex;
     justify-content: space-between;
+    gap: 16px;
     padding: 10px 16px;
-}
-
-body[data-view="chat"] .workspace-header > div:first-child {
-    visibility: hidden;
 }
 
 body[data-view="dashboard"] .top-actions {
@@ -256,6 +253,39 @@ body[data-view="dashboard"] .top-actions {
     font-size: 15px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+}
+
+.month-toolbar-field {
+    display: grid;
+    gap: 6px;
+    min-width: 118px;
+}
+
+.month-toolbar-field span,
+.current-month-indicator,
+.month-state-kicker {
+    color: var(--on-surface-variant);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.month-toolbar-field span {
+    padding-left: 2px;
+}
+
+.year-field {
+    min-width: 88px;
+}
+
+.month-toolbar-field input,
+.month-toolbar-field select {
+    min-height: 40px;
+}
+
+.current-month-indicator {
+    letter-spacing: 0.04em;
+    text-transform: none;
 }
 
 .app-view {
@@ -685,6 +715,56 @@ body[data-view="dashboard"] .top-actions {
     margin-top: 6px;
 }
 
+.analysis-month-switcher {
+    align-items: end;
+    background: rgba(255, 255, 255, 0.42);
+    border: 1px solid rgba(198, 197, 214, 0.28);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding: 18px 20px;
+}
+
+.analysis-month-switcher h3 {
+    font-size: 22px;
+    line-height: 1.1;
+}
+
+.analysis-month-switcher-copy p:last-child {
+    margin-top: 6px;
+}
+
+.analysis-month-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.month-state-card {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.46);
+    border: 1px solid rgba(198, 197, 214, 0.28);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding: 18px 20px;
+}
+
+.month-state-card h3 {
+    font-size: 24px;
+    line-height: 1.1;
+}
+
+.month-state-card p:last-child {
+    color: var(--on-surface-variant);
+    margin-top: 6px;
+}
+
 .upload-zone {
     align-items: center;
     border: 2px dashed rgba(198, 197, 214, 0.82);
@@ -942,6 +1022,14 @@ body[data-view="dashboard"] .top-actions {
     display: grid;
     gap: 14px;
     margin-top: 32px;
+}
+
+.month-state-banner {
+    background: rgba(255, 255, 255, 0.48);
+    border: 1px solid rgba(198, 197, 214, 0.32);
+    border-radius: var(--radius);
+    color: var(--on-surface-variant);
+    padding: 12px 14px;
 }
 
 .expense-item {
@@ -1631,5 +1719,17 @@ textarea:focus {
 
     .insight-rail {
         display: none;
+    }
+
+    .workspace-header,
+    .month-state-card,
+    .analysis-month-controls,
+    .analysis-month-switcher {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .workspace-header {
+        padding: 16px;
     }
 }

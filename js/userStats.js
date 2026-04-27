@@ -1,4 +1,5 @@
 import { formatMonthLabelFromKey } from "./formatters.js";
+import { buildMonthContext, buildMonthContextFromDate } from "./monthlyManager.js";
 import {
     buildWeeklyKey,
     computeDelta,
@@ -14,13 +15,20 @@ const PROFILE_FIELDS = ["income", "savings", "goal", "mandatory"];
 function normalizeUserExpense(expense) {
     const date = expense.date ? new Date(`${expense.date}T12:00:00`) : null;
     const validDate = date && !Number.isNaN(date.getTime()) ? date : null;
-    const monthKey = validDate ? getMonthKey(validDate) : null;
+    const monthContext = validDate
+        ? buildMonthContextFromDate(validDate)
+        : expense.month && expense.year
+            ? buildMonthContext(expense.month, expense.year)
+            : null;
+    const monthKey = monthContext?.monthKey || (validDate ? getMonthKey(validDate) : null);
 
     return {
         id: String(expense.id),
         date: validDate,
         dateLabel: validDate ? validDate.toISOString().slice(0, 10) : expense.date || "",
         monthKey,
+        month: monthContext?.month || expense.month || "",
+        year: monthContext?.year || expense.year || null,
         amount: toNumber(expense.amount),
         category: expense.category || "Uncategorized",
         vendor: expense.vendor || "",
@@ -56,7 +64,7 @@ function buildProfileState(profile = {}) {
     return parsed;
 }
 
-export function buildUserStats({ manualExpenses = [], profile = {} }) {
+export function buildUserStats({ manualExpenses = [], profile = {}, activeMonthContext = null }) {
     const allRecords = manualExpenses
         .map(normalizeUserExpense)
         .filter((record) => Number.isFinite(record.amount) && record.amount > 0);
@@ -140,8 +148,18 @@ export function buildUserStats({ manualExpenses = [], profile = {} }) {
 
     const latestPeriod = monthlyTrend[monthlyTrend.length - 1] || null;
     const previousPeriod = monthlyTrend.length > 1 ? monthlyTrend[monthlyTrend.length - 2] : null;
-    const currentCalendarKey = getMonthKey(new Date());
-    const currentCalendarPeriod = monthlyTrend.find((item) => item.key === currentCalendarKey) || null;
+    const resolvedActiveMonth = activeMonthContext?.month && activeMonthContext?.year
+        ? buildMonthContext(activeMonthContext.month, activeMonthContext.year)
+        : null;
+    const activePeriod = resolvedActiveMonth
+        ? monthlyTrend.find((item) => item.key === resolvedActiveMonth.monthKey) || {
+            key: resolvedActiveMonth.monthKey,
+            label: resolvedActiveMonth.label,
+            total: 0,
+            count: 0,
+            categories: new Map()
+        }
+        : latestPeriod;
 
     const categoryMonthSeries = new Map();
     categoryBreakdown.forEach((category) => {
@@ -153,8 +171,8 @@ export function buildUserStats({ manualExpenses = [], profile = {} }) {
         categoryMonthSeries.set(category.name, series);
     });
 
-    const currentSpend = currentCalendarPeriod?.total ?? latestPeriod?.total ?? totalExpense;
-    const currentPeriodLabel = currentCalendarPeriod?.label ?? latestPeriod?.label ?? "Current spending";
+    const currentSpend = activePeriod?.total ?? latestPeriod?.total ?? totalExpense;
+    const currentPeriodLabel = activePeriod?.label ?? latestPeriod?.label ?? "Current spending";
     const totalMonthlyOutflow = currentSpend + parsedProfile.mandatoryTotal;
     const discretionaryBudget = parsedProfile.income > 0
         ? Math.max(parsedProfile.income - parsedProfile.mandatoryTotal, 0)
@@ -218,7 +236,7 @@ export function buildUserStats({ manualExpenses = [], profile = {} }) {
                 total: month.total,
                 count: month.count
             })),
-            currentCalendarPeriod,
+            activePeriod,
             latestPeriod,
             previousPeriod
         },
@@ -262,7 +280,9 @@ export function buildUserStats({ manualExpenses = [], profile = {} }) {
             hasRecords: records.length > 0,
             hasTransactions: allRecords.length > 0,
             hasDates: monthlyTrend.length > 0,
-            hasVendors: vendorBreakdown.length > 0
+            hasVendors: vendorBreakdown.length > 0,
+            activeMonthLabel: currentPeriodLabel,
+            activeMonthKey: resolvedActiveMonth?.monthKey || activePeriod?.key || null
         }
     };
 }

@@ -78,11 +78,12 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
     }
 
     if (!snapshot.userStats.metadata.hasRecords) {
+        const activeMonthLabel = snapshot.userStats.metadata.activeMonthLabel || "the active month";
         return {
             signature: "no-user-expenses",
             text: [
                 "You're ready to start.",
-                "Note: add or import expenses and I will compare them with your usual spending pattern, your income, and your savings goal."
+                `Note: add or import expenses for ${activeMonthLabel} and I will compare them with your usual spending pattern, your income, and your savings goal.`
             ].join("\n")
         };
     }
@@ -226,7 +227,7 @@ export function tryAnswerDirect(question, snapshot, ruleInsights) {
     }
 
     if (/(this month|current month|latest month)/.test(q) && /(spend|expense|spent)/.test(q)) {
-        const activeMonth = userStats.monthly.currentCalendarPeriod || userStats.monthly.latestPeriod;
+        const activeMonth = userStats.monthly.activePeriod || userStats.monthly.latestPeriod;
         if (!activeMonth) {
             return "I do not have enough dated user expenses to calculate a monthly total yet.";
         }
@@ -288,6 +289,7 @@ Rules:
 10. Sound like a sharp, friendly advisor texting you — not a financial report.
 
 Structured finance context:
+- Active Month: ${snapshot.userStats.metadata.activeMonthLabel || "Unknown"}
 - User monthly income: ${formatCurrency(snapshot.userStats.profile.income)}
 - User current savings: ${formatCurrency(snapshot.userStats.profile.savings)}
 - User monthly savings goal: ${formatCurrency(snapshot.userStats.profile.goal)}
@@ -346,6 +348,7 @@ Rules:
 10. Sound like a sharp, friendly advisor texting you — not a financial report.
 
 Structured finance context:
+- Active Month: ${snapshot.userStats.metadata.activeMonthLabel || "Unknown"}
 - User monthly income: ${formatCurrency(snapshot.userStats.profile.income)}
 - User current savings: ${formatCurrency(snapshot.userStats.profile.savings)}
 - User monthly savings goal: ${formatCurrency(snapshot.userStats.profile.goal)}

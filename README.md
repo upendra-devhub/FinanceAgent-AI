@@ -1,6 +1,6 @@
-# FinanceAgent AI — Premium Personal Finance Advisor
+# FinanceAgent AI - Premium Personal Finance Advisor
 
-A sophisticated AI-powered personal finance management application that analyzes spending patterns, provides intelligent insights, and delivers actionable financial advice — all running entirely in your browser.
+A sophisticated AI-powered personal finance management application that analyzes spending patterns, provides intelligent insights, and offers actionable financial advice.
 
 ---
 
@@ -13,165 +13,156 @@ A sophisticated AI-powered personal finance management application that analyzes
 - [Project Structure](#project-structure)
 - [Core Modules](#core-modules)
 - [Usage Guide](#usage-guide)
-- [Data Privacy & Storage](#data-privacy--storage)
-- [Technical Stack](#technical-stack)
-- [Troubleshooting](#troubleshooting)
-- [Future Enhancements](#future-enhancements)
 
 ---
 
 ## Overview
 
-**FinanceAgent AI** is a client-side personal finance dashboard that combines statistical analysis, a rule-based insights engine, and AI-powered chat (via **Groq API**) to help users understand and manage their spending. The app uses your spending history, financial profile, and a hidden reference baseline to deliver personalized recommendations — with zero backend or server dependency.
+**FinanceAgent AI** is a web-based personal finance dashboard that combines data analysis, rule-based insights, and AI-powered chat to help users understand and manage their spending. The app uses your spending history and financial profile to deliver personalized recommendations.
 
 ### Key Capabilities
-- Import and analyze expense data from **CSV and Excel (.xlsx/.xls)** files
-- Get AI-powered financial advice via integrated **Groq-powered** chat (Llama 3.3 70B)
-- Track spending patterns against a hidden reference baseline
-- Real-time financial health scoring (0–100)
-- Category-based expense analysis with automatic categorization
-- Interactive dashboard with visual insights, charts, and savings tracking
-- Direct-answer engine that resolves many queries without an API call
+- Upload and analyze expense data (CSV format)
+- Get AI-powered financial advice via integrated chat
+- Track spending patterns against your baseline
+- Real-time financial health scoring
+- Category-based expense analysis
+- Interactive dashboards with visual insights
 
 ---
 
 ## Key Features
 
 ### 1. **Chat Workspace** 💬
-- Interactive AI chat assistant powered by **Groq API** (Llama 3.3 70B Versatile)
-- Contextual system prompt built from your live spending data, financial profile, and rule-engine findings
-- **Direct-answer mode**: resolves common queries (savings rate, top categories, biggest expenses, monthly totals, etc.) instantly without any API call
-- Automated insight digest: proactively pushes a spending snapshot when new data arrives
-- Quick-action buttons: *Analyze spending*, *Upload CSV*, *Create budget*
-- Conversation history persisted in local storage across sessions
+- Interactive AI-powered chat assistant powered by Gemini API
+- Contextual responses based on your spending data and financial profile
+- Direct answer mode for simple queries (savings rate, top categories, etc.)
+- Automated insight digest for quick financial updates
+- Conversation history saved to local storage
 
 ### 2. **Expense Analysis** 📊
-- **CSV Import**: Upload personal expense files — parser auto-detects delimiter, column mapping, and date formats
-- **Excel Import**: Native `.xlsx` / `.xls` support via the SheetJS (XLSX) library
-- **Manual Entry**: Add expenses individually via a modal with date, category, vendor, description, and amount
-- **Data Preview**: Review parsed rows with confirm/cancel before committing the import
-- **Automatic Category Detection**: Keyword-based rules map vendors/descriptions to categories (Food, Transport, Entertainment, Investment, Income, etc.)
-- **Transaction Type Inference**: Distinguishes expenses, income, and investments from column values, debit/credit columns, and text patterns
-- **Duplicate Detection**: Prevents duplicate entries using a composite key of date + category + amount + transaction type
+- **CSV Import**: Upload personal or bundled expense datasets
+- **Manual Entry**: Add expenses individually with date, category, vendor, and amount
+- **Data Preview**: Review imported data before confirmation
+- **Category Mapping**: Automatically categorizes expenses (Food, Transport, Entertainment, etc.)
+- **Duplicate Detection**: Prevents duplicate entries in your dataset
 
 ### 3. **Financial Dashboard** 📈
-- **Summary Cards**: Total spent, transaction count, top vendors, major categories
-- **Category Donut Chart**: Expense distribution by category
-- **Cash Flow Chart**: Monthly spending trend visualization
-- **Savings Progress**: Visual gauge of savings goal achievement
-- **Investment Allocation**: Breakdown of investment distribution
-- **Agent Insights**: AI-generated recommendations rendered on the dashboard
-- **Tax Estimate**: Rough quarterly tax liability estimate based on current spend
+- **User Statistics Cards**: Summary of total spent, transaction count, top vendors, and major categories
+- **Category Breakdown**: Donut chart showing expense distribution by category
+- **Monthly Trends**: Line chart tracking spending patterns over time
+- **Savings Progress**: Visual indicator of savings goal achievement
+- **Investment Allocation**: Breakdown of investment distribution (if applicable)
+- **Insights Summary**: AI-generated recommendations on the dashboard
 
 ### 4. **Financial Insights** 🎯
-- **Spending Health Score**: Rule-engine-calculated score (0–100) factoring:
+- **Spending Health Score**: AI-calculated health score (0-100) based on:
   - Profile completeness
-  - Alert count and severity
-  - Spending mix vs. baseline distribution
+  - Alert severity
+  - Spending mix vs. baseline
   - Budget load (income pressure)
   - Savings goal achievement
-- **Smart Alerts** (by severity):
-  - **High**: Critical spending issues requiring immediate attention
-  - **Medium**: Notable patterns worth monitoring
-  - **Low**: Informational insights
+- **Smart Alerts**: 
+  - **High Severity**: Critical spending issues requiring attention
+  - **Medium Severity**: Notable patterns worth monitoring
+  - **Low Severity**: Informational insights
   - **Positive**: Good spending behaviors to maintain
-- **Category Comparisons**: Your spending share vs. baseline median share per category
-- **Insight Rail**: Live sidebar cards on the chat workspace with the top findings
+- **Comparative Analysis**: Your spending vs. your baseline spending pattern
+- **Category Performance**: How each expense category compares to your typical distribution
 
 ### 5. **Financial Profile** 👤
-- Dedicated profile page (`profile.html`) to manage:
-  - **Monthly Income**
-  - **Current Savings**
-  - **Monthly Savings Goal**
-  - **Mandatory Monthly Expenses**
-- Profile-aware calculations: affordability checks, savings rate, budget load, and savings capacity
-- Field-level validation with inline error messages
-- Profile values stored in localStorage and automatically reflected across dashboard, insights, and AI context
+- Store and manage personal financial details:
+  - **Monthly Income**: Your regular monthly earnings
+  - **Current Savings**: Total savings available
+  - **Savings Goal**: Target amount to save
+  - **Mandatory Expenses**: Fixed monthly obligations
+- Profile-aware calculations for affordability and savings checks
+- Validation ensures all critical fields are completed
 
 ### 6. **Settings & Data Management** ⚙️
-- **Groq API Key Configuration**: Stored locally in the browser — used only for AI chat requests
-- **Reset Workspace**: Clear all expenses, conversations, profile data, and cached insights
-- **Clear Transactions**: Remove only transaction data without touching profile or API key
-- **Privacy First**: All data stays in your browser (`localStorage`); nothing is sent to any server except the Groq chat API
+- **API Key Configuration**: Securely store your Gemini API key
+- **Data Reset**: Clear all expenses and conversation history
+- **Data Export**: Access your stored data locally
+- **Privacy First**: All data stored locally in browser (localStorage)
 
 ---
 
 ## Workflow
 
-### User Journey
+### User Journey Overview
 
 ```
 1. SET UP PROFILE
    └─> Fill in financial profile (income, savings, goals, mandatory expenses)
 
 2. IMPORT EXPENSE DATA
-   └─> Upload CSV or Excel file with transaction history
-   └─> Review parsed preview before confirming import
-   └─> App builds a reference baseline from the bundled dataset
+   └─> Upload CSV file with historical expenses
+   └─> Review preview before confirming import
+   └─> App builds baseline spending pattern from dataset
 
 3. ANALYZE & TRACK
-   └─> View dashboard with spending trends, charts, and summary cards
-   └─> Add new expenses manually via the floating + button
-   └─> System compares new spending against baseline and profile
+   └─> View dashboard with spending trends
+   └─> Add new manual expenses as they occur
+   └─> System compares new spending against baseline
 
 4. GET INSIGHTS
-   └─> Dashboard shows health score and severity-ranked alerts
-   └─> Insight rail displays live findings on the chat workspace
-   └─> Rules engine flags spending anomalies and positive behaviors
+   └─> Dashboard shows health score and alerts
+   └─> Insights rail displays key findings
+   └─> Rules engine flags spending anomalies
 
 5. CHAT WITH AI ADVISOR
-   └─> Ask questions about spending — many answered instantly via direct-answer engine
-   └─> Complex queries routed to Groq API with full financial context
-   └─> Receive context-aware advice with actionable recommendations
+   └─> Ask questions about spending
+   └─> Receive context-aware advice based on your data
+   └─> Get recommendations for improvement
 ```
 
-### Detailed Steps
+### Detailed Workflow Process
 
 #### Step 1: Initial Setup
 1. Open the app and navigate to **Settings**
-2. Enter your **Groq API Key** (required for AI chat — get one from [console.groq.com](https://console.groq.com))
-3. Go to **Profile Page** (Settings → Edit Profile) and fill in:
+2. Enter your **Gemini API Key** (required for AI chat)
+3. Go to **Profile Page** and fill in:
    - Monthly income
-   - Current savings
-   - Monthly savings goal
+   - Current savings total
+   - Savings goal
    - Mandatory monthly expenses
 
-#### Step 2: Data Import
-1. Click **New Analysis** or go to the **Analysis** tab
-2. Upload a CSV or Excel file — or use the bundled sample dataset
-3. The parser auto-detects columns, delimiters, and date formats
-4. Review the data preview, then click **Import** to confirm
-5. The app automatically:
-   - Parses and validates entries
-   - Infers transaction types (expense / income / investment)
-   - Auto-categorizes rows using keyword rules
-   - Merges new data and deduplicates against existing entries
+#### Step 2: Data Import & Baseline Creation
+1. Click **New Analysis** or go to **Analysis Tab**
+2. Upload a CSV file with historical expenses or use the bundled sample dataset
+3. Review the data preview
+4. Click **Import** to process the data
+5. System automatically:
+   - Parses the CSV and validates entries
+   - Creates reference baseline (monthly patterns, category distribution)
+   - Calculates statistical distributions (mean, median, standard deviation)
 
 #### Step 3: Dashboard Monitoring
-1. Go to the **Dashboard** tab to see:
-   - Summary statistics cards
-   - Monthly cash flow trend
-   - Category donut breakdown
-   - Savings progress gauge
-   - Agent insights and investment allocation
-2. Add expenses manually using the **+** floating button
-3. Each new expense is compared against the baseline and profile in real time
+1. Go to **Dashboard Tab** to see:
+   - Your spending statistics
+   - Monthly trend visualization
+   - Category breakdown
+   - Savings progress
+   - Financial health score
+2. Add new expenses manually using the **+** button
+3. Each new expense is compared against the baseline
 
 #### Step 4: Insight Generation
-1. Navigate to the **Insights** tab
-2. View category-level comparisons against the reference baseline
-3. Health score updates automatically as data changes
-4. Alerts are ranked by severity and displayed with suggested actions
+1. Navigate to **Insights Tab**
+2. View your financial health score and breakdown
+3. See alerts categorized by severity:
+   - What spending patterns are unusual
+   - Savings goal status
+   - Budget load analysis
+   - Profile-specific recommendations
 
 #### Step 5: AI Advisor Chat
-1. Click on the **Workspace** (Chat) tab
+1. Click on **Workspace** (Chat) tab
 2. Ask questions like:
-   - *"What are my top spending categories?"*
-   - *"Am I on track with my savings?"*
-   - *"What's my savings rate?"*
-   - *"Which category is too high?"*
-   - *"What should I focus on improving?"*
-3. Many queries are answered instantly; others get a Groq-powered AI response with full context
+   - "What are my top spending categories?"
+   - "Am I on track with my savings?"
+   - "Why did my food spending increase?"
+   - "What should I do to improve my health score?"
+3. AI responds with context-aware advice
 
 ---
 
@@ -179,32 +170,32 @@ A sophisticated AI-powered personal finance management application that analyzes
 
 ### Prerequisites
 - Modern web browser (Chrome, Firefox, Safari, Edge)
-- Groq API key (free — get from [console.groq.com](https://console.groq.com))
-- CSV or Excel file with expense data (optional — sample dataset included)
+- Gemini API key (get from [Google AI Studio](https://aistudio.google.com))
+- CSV file with expense data (optional, sample provided)
 
 ### Installation
 
-1. **Clone the repository**
+1. **Clone or download the project**
    ```bash
-   git clone https://github.com/upendra-devhub/FinanceAgent-AI.git
+   git clone <repository-url>
    cd FinanceAgent-AI
    ```
 
 2. **Open in browser**
    ```bash
-   # Simply open index.html directly in your browser
-   # Or use a local web server (recommended for module imports)
+   # Simply open index.html in your web browser
+   # Or use a local web server (recommended)
    python -m http.server 8000
    # Then visit http://localhost:8000
    ```
 
 3. **Configure API Key**
-   - Open the **Settings** tab
-   - Paste your Groq API key (starts with `gsk_`)
-   - The key is saved in localStorage and used only for chat requests
+   - Open Settings tab
+   - Enter your Gemini API key
+   - Key is stored securely in browser localStorage
 
 ### Sample Data
-The project includes `data/personal_expense_dataset.csv` — a sample expense dataset so you can explore all features without needing your own data. The app loads this automatically as the reference baseline.
+The project includes `data/personal_expense_dataset.csv` with sample expense data to explore the app's features without needing your own dataset.
 
 ---
 
@@ -212,238 +203,202 @@ The project includes `data/personal_expense_dataset.csv` — a sample expense da
 
 ```
 FinanceAgent-AI/
-├── index.html                          # Main app interface (sidebar + 5 views)
-├── profile.html                        # Dedicated financial profile editor
-├── styles.css                          # Full application styling
-├── GROQ_MIGRATION.md                   # Groq API migration documentation
-├── REFACTORING_SUMMARY.md              # Refactoring changelog
+├── index.html                          # Main app interface
+├── profile.html                        # Financial profile editor
+├── styles.css                          # Application styling
 │
 ├── data/
-│   └── personal_expense_dataset.csv    # Bundled reference dataset
+│   └── personal_expense_dataset.csv   # Sample expense data
 │
 └── js/
-    ├── app.js                          # Main app hub: state, routing, events, coordination
-    ├── baselineEngine.js               # Builds reference baseline from the bundled dataset
-    ├── chatService.js                  # Groq API integration, direct-answer engine, digest builder
-    ├── csvParser.js                    # CSV & Excel parsing, column mapping, category detection
-    ├── formatters.js                   # Currency, number, and percentage formatting utilities
-    ├── profileManager.js               # Profile validation & financial field management
-    ├── profilePage.js                  # Profile page interactions (profile.html)
-    ├── rulesEngine.js                  # Insight generation, health scoring, alert rules
-    ├── stats.js                        # Statistical calculations (quantiles, IQR, outliers)
-    ├── storage.js                      # localStorage management (CRUD for all data)
-    ├── uiRenderer.js                   # Dynamic UI rendering (cards, charts, modals, lists)
-    └── userStats.js                    # User metrics computation (categories, trends, comparisons)
+    ├── app.js                          # Main app logic & state management
+    ├── baselineEngine.js               # Builds reference baseline from historical data
+    ├── chatService.js                  # AI chat integration (Gemini API)
+    ├── csvParser.js                    # CSV parsing & validation
+    ├── formatters.js                   # Data formatting utilities
+    ├── profileManager.js               # Profile validation & management
+    ├── profilePage.js                  # Profile page interactions
+    ├── rulesEngine.js                  # Insight generation & scoring
+    ├── stats.js                        # Statistical calculations
+    ├── storage.js                      # LocalStorage management
+    ├── uiRenderer.js                   # Dynamic UI rendering
+    └── userStats.js                    # User statistics computation
 ```
 
 ---
 
 ## Core Modules
 
-### **app.js** — Application Hub
-- Central state management (`manualExpenses`, `datasetRecords`, `conversation`, `baseline`, `userStats`, `comparisonInsights`)
-- View routing via sidebar navigation (Chat, Analysis, Dashboard, Insights, Settings) with hash-based URL support
-- Coordinates the full data pipeline: parse → baseline → user stats → comparison insights → render
-- Modal management: Add Expense modal, Reset Data modal, Clear Transactions modal
-- File import orchestration with preview, confirm, and cancel workflow
-- Quick-action buttons that pre-fill chat prompts
-- Automatic insight publishing on data changes
+### **app.js** - Application Hub
+- Central state management
+- View routing (Chat, Analysis, Dashboard, Insights, Settings)
+- Event handling for all user interactions
+- Coordinates data flow between modules
+- Manages modals and user interface updates
 
-### **baselineEngine.js** — Reference Baseline Builder
-- Processes the bundled historical expense dataset
+### **baselineEngine.js** - Reference Data Builder
+- Processes historical expense data
 - Calculates spending distributions by category and month
 - Creates statistical profiles (mean, median, quartiles, standard deviation)
 - Builds vendor and category frequency maps
-- Provides reference data for the comparison algorithms in `rulesEngine.js`
+- Provides reference data for comparison algorithms
 
-### **chatService.js** — AI Integration & Direct Answers
-- **Groq API** integration (`https://api.groq.com/openai/v1/chat/completions`)
-- Uses the `llama-3.3-70b-versatile` model (configurable)
-- `buildGroqSystemInstruction()` — constructs a detailed system prompt with the user's full financial context
-- `tryAnswerDirect()` — pattern-matched direct-answer engine resolving ~15 query types without API calls (savings rate, category spend, monthly totals, budget load, etc.)
-- `buildAutomatedInsightDigest()` — generates proactive spending snapshots
-- Conversation format conversion between internal `{role, parts}` and OpenAI-compatible `{role, content}`
-- Backward-compatible `requestGeminiResponse()` wrapper (delegates to Groq)
+### **chatService.js** - AI Integration
+- Integrates with Google Gemini API
+- Generates system instructions based on user context
+- Builds automated insight digests
+- Answers direct questions about spending without API calls
+- Maintains conversation context for multi-turn dialogue
+- Error handling for API failures
 
-### **csvParser.js** — Data Import Engine
-- **Multi-format support**: CSV (auto-detected delimiters: `,`, `;`, `\t`, `|`) and Excel via SheetJS
-- **Flexible column mapping**: keyword-based header detection for date, amount, category, vendor, description, payment mode, debit, credit, and transaction type
-- **Auto-categorization**: keyword rules map vendors/descriptions to categories (Food, Transport, Shopping, Health, Entertainment, Investment, Income, etc.)
-- **Transaction type inference**: distinguishes expenses, income, and investments from debit/credit columns, column values, and text patterns
-- **Robust date parsing**: supports ISO, `MM/DD/YYYY`, `DD/MM/YYYY`, month names, and ambiguous formats
-- **Signed currency handling**: parses negative amounts, parenthesized values, and debit/credit text markers
+### **csvParser.js** - Data Import
+- Parses CSV files with flexible column mapping
+- Validates expense entries
+- Handles bundled dataset parsing
+- Supports manual expense row parsing
+- Detects and handles data format variations
 
-### **rulesEngine.js** — Intelligence & Scoring
-- Generates spending alerts at four severity levels (high, medium, low, positive)
-- Calculates financial health score (0–100) with five weighted factors
-- Compares user spending against the baseline distribution per category
-- Flags categories running above or below the reference median
-- Creates actionable recommendations with suggested next steps
-- Builds category comparison data for the Insights view
+### **profileManager.js** - Profile Management
+- Validates financial profile inputs
+- Ensures all required fields are completed
+- Provides field-level error messages
+- Calculates profile completeness status
+- Normalizes numeric values
 
-### **stats.js** — Statistical Analysis
-- Quantile and percentile computation (with interpolation)
-- Standard deviation and interquartile range (IQR)
-- Outlier detection using statistical fences
-- Monthly and weekly grouping utilities
-- Data distribution summaries
+### **rulesEngine.js** - Intelligence & Scoring
+- Generates spending alerts (high, medium, low severity)
+- Identifies positive spending behaviors
+- Calculates financial health score (0-100)
+- Compares user spending against baseline
+- Determines category spending anomalies
+- Creates actionable recommendations
 
-### **storage.js** — Data Persistence
-- Manages all `localStorage` reads and writes
-- Stores/retrieves: expenses, conversations, profile fields, API key, insight signatures, and uploaded datasets
-- JSON serialization with error-safe parsing
-- Full workspace reset via `clearAllStoredData()`
+### **stats.js** - Statistical Analysis
+- Computes quantiles and percentiles
+- Calculates standard deviation and IQR
+- Identifies outliers using statistical fences
+- Processes monthly and weekly groupings
+- Summarizes data distributions
 
-### **uiRenderer.js** — Visual Rendering
-- Renders all UI components dynamically: summary cards, charts, expense lists, modals, chat bubbles
-- Data-driven visualizations (donut chart, cash flow bars, savings gauge)
-- Import preview with row count and confirm/cancel buttons
-- Chat history rendering with role-based styling
-- Loading state management
+### **storage.js** - Data Persistence
+- Manages localStorage operations
+- Stores/retrieves expenses, conversations, profiles
+- Handles API key storage securely
+- Saves and loads conversation history
+- Prevents data loss on browser refresh
 
-### **userStats.js** — User Metrics
-- Aggregates user expenses into category breakdowns, monthly trends, and vendor rankings
-- Computes financial comparisons: budget load, savings rate, savings capacity, and target savings rate
-- Integrates profile data (income, savings, goal, mandatory expenses) into calculations
-- Tracks metadata: record count, date ranges, and current calendar period
+### **uiRenderer.js** - Visual Rendering
+- Renders all UI components dynamically
+- Creates charts and visualizations
+- Formats and displays data tables
+- Updates loading states
+- Manages modal content and status messages
 
-### **profileManager.js** — Profile Management
-- Validates financial profile inputs with field-level error messages
-- Ensures all required numeric fields are completed
-- Reads profile from localStorage via `storage.js`
-- Returns normalized profile values for use in stats and chat context
-
-### **formatters.js** — Formatting Utilities
-- `formatCurrency()` — INR currency formatting with locale support
-- `formatNumber()` — locale-aware number formatting
-- `formatPercent()` — percentage formatting with configurable precision
+### **userStats.js** - User Metrics
+- Aggregates user expense statistics
+- Calculates category breakdown
+- Computes spending comparisons against baseline
+- Determines savings rate and budget load
+- Tracks transaction metadata
 
 ---
 
 ## Usage Guide
 
 ### Adding an Expense
-1. Click the floating **+** button (bottom-right) or the **+** icon in the chat input
-2. Fill in the modal:
+1. Click **+ New Analysis** button or floating **+ button**
+2. Fill in expense details:
    - **Date**: When the expense occurred
-   - **Category**: Select from auto-populated categories
-   - **Vendor**: Where you spent (e.g., D-Mart, Swiggy, Uber)
-   - **Description**: Optional note
+   - **Category**: Type of expense
+   - **Vendor**: Where you spent (optional)
+   - **Description**: Details about the expense (optional)
    - **Amount**: Expense amount
-3. Click **Save** — the expense is added instantly and all views update
+3. Click **Save Expense**
+4. Expense appears in your list and updates all visualizations
 
 ### Importing Expense History
-1. Go to the **Analysis** tab
-2. Click **Browse Files** or drag a CSV/Excel file onto the upload zone
-3. Review the preview of parsed transactions
-4. Click **Import** to confirm, or **Cancel** to discard
-5. The app:
-   - Auto-detects columns and date formats
-   - Infers transaction types (expense / income / investment)
-   - Deduplicates against existing data
-   - Updates all dashboards and insights
+1. Go to **Analysis** tab
+2. Click **Upload File** or drag CSV file to the upload zone
+3. Review the preview of parsed data
+4. Click **Import** to process
+5. App automatically:
+   - Creates baseline from historical data
+   - Calculates patterns and distributions
+   - Enables comparative analysis
 
-### Supported File Formats
-| Format | Extensions | Notes |
-|--------|-----------|-------|
-| CSV | `.csv` | Auto-detects delimiter (`,`, `;`, `\t`, `\|`) |
-| Excel | `.xlsx`, `.xls` | First sheet is parsed via SheetJS |
-
-### Expected Columns (flexible naming)
+### CSV Format
+Expected columns (flexible naming):
 ```
 Date, Category, Amount, Vendor, Description
 2024-01-15, Food, 45.50, Grocery Store, Weekly shopping
 2024-01-16, Transport, 12.00, Taxi, Ride to office
 ```
 
-The parser also supports: separate **Debit**/**Credit** columns, **Payment Mode**, **Transaction Type**, and **Month** columns.
-
 ### Asking Questions in Chat
 Examples of effective queries:
-- *"What are my top 3 spending categories?"*
-- *"How much did I spend on food?"*
-- *"Am I on track with my savings?"*
-- *"What's my savings rate?"*
-- *"Which category is too high?"*
-- *"What are my biggest expenses?"*
-- *"What should I focus on improving?"*
-- *"Do my expenses exceed income?"*
-
-Many of these are resolved instantly via the direct-answer engine. Complex or open-ended queries are routed to the Groq AI.
+- "What are my top 3 spending categories?"
+- "How much did I spend on food this month?"
+- "Am I on track with my savings goal?"
+- "Why is my health score low?"
+- "Which vendors do I spend the most at?"
+- "What should I cut back on?"
 
 ### Understanding Health Score
-| Range | Band | Meaning |
-|-------|------|---------|
-| 80–100 | Strong | Excellent spending discipline |
-| 60–79 | Stable | Good overall financial health |
-| 40–59 | Watchlist | Some areas need attention |
-| 0–39 | At Risk | Significant spending concerns |
+- **80-100 (Strong)**: Excellent spending discipline
+- **60-79 (Stable)**: Good overall financial health
+- **40-59 (Watchlist)**: Some areas need attention
+- **0-39 (At Risk)**: Significant spending concerns
 
-**Health score factors:**
+Health score factors:
 - ✅ Complete financial profile
 - ✅ Few/no high-severity alerts
-- ✅ Balanced expense distribution vs. baseline
+- ✅ Balanced expense distribution
 - ✅ Savings goal achievement
-- ✅ Budget load within income limits
+- ✅ Budget load (not over-spending relative to income)
 
 ### Resetting Data
-- **Reset All Data** (Settings → Reset Workspace): Clears everything — profile, API key, transactions, chat history, and cached insights
-- **Clear Transactions** (Analysis tab): Removes only expenses while preserving profile and API key
+1. Go to **Settings**
+2. Click **Clear All Data** button
+3. Confirm the action (this cannot be undone)
+4. All expenses, conversations, and profile data are deleted
 
 ---
 
 ## Data Privacy & Storage
 
 - **No Server**: All data stored locally in browser (`localStorage`)
-- **No Tracking**: No analytics, cookies, or user tracking
-- **API Key**: Stored locally; sent only to Groq's API endpoint for chat requests
-- **Offline-Ready**: The app works without internet after initial load (except AI chat)
-- **No Data Leaves Your Browser**: The only external request is the Groq chat API call
-
----
-
-## Technical Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | HTML5, CSS3, JavaScript (ES6 Modules) |
-| **AI Integration** | Groq API — Llama 3.3 70B Versatile |
-| **Excel Parsing** | SheetJS (XLSX) via CDN |
-| **Icons** | Google Material Symbols |
-| **Typography** | Google Fonts (Manrope) |
-| **Storage** | Browser localStorage |
-| **Architecture** | Modular vanilla JS — no frameworks, no build step |
-
----
-
-## API Requirements
-
-### Groq API
-The chat feature requires a Groq API key:
-
-1. Visit [console.groq.com](https://console.groq.com)
-2. Sign up for a free account
-3. Navigate to **API Keys** section
-4. Create a new key (starts with `gsk_`)
-5. Paste the key into Settings → Groq API Key
-
-**Model**: `llama-3.3-70b-versatile` (configurable in `chatService.js`)  
-**Parameters**: `max_tokens: 1024`, `temperature: 0.7`  
-**Rate Limits**: Check your Groq dashboard for current quotas
+- **No Tracking**: No analytics or user tracking
+- **API Key**: Stored locally; never sent elsewhere except to Gemini API
+- **Offline Ready**: Works without internet after initial load (except chat)
 
 ---
 
 ## Browser Compatibility
 
-- ✅ Chrome / Chromium (latest)
+- ✅ Chrome/Chromium (latest)
 - ✅ Firefox (latest)
 - ✅ Safari (latest)
 - ✅ Edge (latest)
 
-**Requires:**
-- ES6+ Module support (`<script type="module">`)
+Requires:
+- ES6+ JavaScript support
 - localStorage API
 - Fetch API
+- Canvas API (for charts)
+
+---
+
+## API Requirements
+
+### Gemini API
+The chat feature requires a Google Gemini API key:
+
+1. Visit [Google AI Studio](https://aistudio.google.com)
+2. Create a new API key
+3. Copy the key to Settings > API Key input
+4. Key is stored locally and used only for chat requests
+
+**Rate Limiting**: Gemini API has usage limits. Check your quota on the Google AI Studio dashboard.
 
 ---
 
@@ -451,14 +406,22 @@ The chat feature requires a Groq API key:
 
 | Issue | Solution |
 |-------|----------|
-| Chat not working | Verify Groq API key in Settings is correct (starts with `gsk_`) |
-| "Groq API request failed" | Check internet connection and Groq service status |
-| "Groq returned an empty response" | Try a simpler query or check rate limits |
-| Data not saving | Ensure browser localStorage is enabled and not full |
-| CSV import fails | Verify the file has at least a header row + one data row with Date and Amount columns |
-| Excel import fails | Ensure the page loaded the SheetJS library (check browser console) |
-| Profile changes not reflecting | The app auto-reads profile on focus; try switching tabs |
-| Health score not updating | Add or import expenses, and complete your financial profile |
+| Chat not working | Verify API key in Settings is correct and valid |
+| Data not saving | Check browser localStorage is enabled |
+| Charts not loading | Ensure Chart.js is loaded (check browser console) |
+| CSV import fails | Verify CSV has required columns: Date, Amount, Category |
+| Profile changes not applying | Refresh the page after updating profile |
+
+---
+
+## Technical Stack
+
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **UI Components**: Material Symbols Icons
+- **Data Visualization**: Chart.js (implied by references)
+- **AI Integration**: Google Gemini API
+- **Storage**: Browser localStorage
+- **Fonts**: Google Fonts (Manrope)
 
 ---
 
@@ -467,13 +430,23 @@ The chat feature requires a Groq API key:
 - Budget planning and forecasting
 - Recurring expense detection
 - Multi-currency support
-- Transaction export / download
+- Transaction export/download
 - Custom category creation
 - Spending forecasts with ML
-- Mobile-responsive layout improvements
+- Mobile app version
 - Cloud sync across devices
 - Receipt image OCR
 - Bill reminders
+
+---
+
+## Support
+
+For issues or feature requests, please check your browser console for error messages and verify:
+1. API key is valid
+2. CSV format matches expected structure
+3. Browser localStorage is not full
+4. JavaScript is enabled
 
 ---
 
@@ -485,9 +458,8 @@ The chat feature requires a Groq API key:
 
 ## Version
 
-**Current Version**: 2.0.0  
-**Last Updated**: April 2026  
-**AI Provider**: Groq (migrated from Google Gemini)
+**Current Version**: 1.0.0  
+**Last Updated**: 2026
 
 ---
 

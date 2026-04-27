@@ -192,22 +192,22 @@ export function renderUserCards(element, userStats) {
     `;
 }
 
-export function renderDashboardVisuals(elements, userStats, ruleInsights) {
-    renderCategoryDonut(elements.categoryDonut, userStats);
-    renderMonthlyChart(elements.monthlyChart, userStats);
+export function renderDashboardVisuals(elements, userStats, ruleInsights, options = {}) {
+    renderCategoryDonut(elements.categoryDonut, userStats, options);
+    renderMonthlyChart(elements.monthlyChart, userStats, options);
     renderSavingsProgress(elements.savingsProgress, userStats);
     renderInvestmentAllocation(elements.investmentAllocation, userStats);
     renderInsightCards(elements.dashboardInsights, ruleInsights, 3);
 }
 
-function renderMonthlyChart(element, userStats) {
+function renderMonthlyChart(element, userStats, options = {}) {
     if (!element) {
         return;
     }
 
     const sourceMonths = userStats.monthly.trend.slice(-6);
     if (!sourceMonths.length) {
-        element.innerHTML = emptyState("No data yet. Upload a CSV to get started.");
+        element.innerHTML = emptyState(options.emptyMonthMessage || "No data yet. Upload a CSV to get started.");
         return;
     }
 
@@ -246,7 +246,7 @@ function renderMonthlyChart(element, userStats) {
     `;
 }
 
-function renderCategoryDonut(element, userStats) {
+function renderCategoryDonut(element, userStats, options = {}) {
     if (!element) {
         return;
     }
@@ -255,7 +255,7 @@ function renderCategoryDonut(element, userStats) {
         element.innerHTML = `
             <div class="profile-total">
                 <strong>₹0</strong>
-                <span>No data yet. Upload a CSV to get started.</span>
+                <span>${escapeHtml(options.emptyMonthMessage || "No data yet. Upload a CSV to get started.")}</span>
             </div>
         `;
         return;
@@ -389,16 +389,21 @@ export function renderCategoryComparison(element, comparisons, ruleInsights, bas
     ].join("");
 }
 
-export function renderExpenseList(element, expenses) {
+export function renderExpenseList(element, expenses, options = {}) {
+    const activeMonthLabel = options.activeMonthLabel || "this month";
+    const emptyMessage = options.isClosed
+        ? "No archived transactions were found for this closed month."
+        : `No expenses logged for ${activeMonthLabel}`;
+
     if (!expenses.length) {
         element.innerHTML = `
             <div class="expense-list-header">
                 <div>
                     <h3>Transactions</h3>
-                    <p>No data yet. Upload a CSV to get started.</p>
+                    <p>${escapeHtml(emptyMessage)}</p>
                 </div>
             </div>
-            <div class="empty-state ledger-empty">No data yet. Upload a CSV to get started.</div>
+            <div class="empty-state ledger-empty">${escapeHtml(emptyMessage)}</div>
         `;
         return;
     }
@@ -407,10 +412,11 @@ export function renderExpenseList(element, expenses) {
         <div class="expense-list-header">
             <div>
                 <h3>Transactions</h3>
-                <p>${formatNumber(expenses.length)} transactions are currently saved in your workspace.</p>
+                <p>${formatNumber(expenses.length)} transactions are currently saved for ${escapeHtml(activeMonthLabel)}.</p>
             </div>
-            <button type="button" class="subtle-button" data-expense-action="clear-all">Clear All Transactions</button>
+            ${options.readOnly ? "" : '<button type="button" class="subtle-button" data-expense-action="clear-all">Clear All Transactions</button>'}
         </div>
+        ${options.isClosed ? '<div class="month-state-banner">This month is closed. Showing archived transactions and analysis for comparison.</div>' : ""}
         ${[...expenses]
             .sort((left, right) => new Date(right.date) - new Date(left.date))
             .slice(0, 8)
@@ -421,7 +427,7 @@ export function renderExpenseList(element, expenses) {
                         <div class="expense-meta">${escapeHtml(expense.date || "No date")} | ${escapeHtml(expense.category || "Uncategorized")} | ${transactionTypeLabel(expense.transactionType)}</div>
                     </div>
                     <div class="expense-value">${formatCurrency(Number(expense.amount) || 0)}</div>
-                    <button type="button" class="icon-button" data-delete-expense="${escapeHtml(String(expense.id))}" title="Delete expense">X</button>
+                    ${options.readOnly ? "" : `<button type="button" class="icon-button" data-delete-expense="${escapeHtml(String(expense.id))}" title="Delete expense">X</button>`}
                 </article>
             `).join("")}
     `;
