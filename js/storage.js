@@ -16,6 +16,7 @@ const KEYS = {
     activeMonth: "fin_activeMonth",
     activeYear: "fin_activeYear",
     expenses: "fin_expenses",
+    learningMonths: "fin_learningMonths",
     chat: "fin_chat",
     lastInsightSignature: "fin_lastInsightSignature",
     uploadedCsv: "fin_uploadedCsv",
@@ -127,6 +128,14 @@ export function getExpenses() {
 
 export function saveExpenses(expenses) {
     localStorage.setItem(KEYS.expenses, JSON.stringify(normalizeExpenseList(expenses)));
+}
+
+export function getLearningMonths() {
+    return readJson(KEYS.learningMonths, []).filter((month) => month?.monthKey && Array.isArray(month.normalizedRecords));
+}
+
+export function saveLearningMonths(learningMonths) {
+    localStorage.setItem(KEYS.learningMonths, JSON.stringify(Array.isArray(learningMonths) ? learningMonths : []));
 }
 
 export function getConversation() {

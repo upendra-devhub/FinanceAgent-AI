@@ -88,10 +88,10 @@ export function generateComparisonInsights({ baseline, userStats }) {
                 {
                     id: "no-baseline",
                     severity: "low",
-                    title: "Reference spending pattern unavailable",
-                    message: "The app could not learn a usual spending pattern because the dataset has no valid expense rows.",
-                    reason: "Without a baseline corpus, comparison rules cannot fire.",
-                    action: "Restore the bundled reference file or provide a valid baseline dataset."
+                    title: "Learned spending pattern unavailable",
+                    message: "The app could not build a rolling 12-month spending pattern because the learning window has no valid expense rows.",
+                    reason: "Without a learned baseline window, comparison rules cannot fire.",
+                    action: "Reload the training months or complete user months so the learning window can rebuild."
                 }
             ],
             positives: [],

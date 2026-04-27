@@ -1,0 +1,13 @@
+month,days_in_month,pattern,rows,file
+2026-01,31,balanced,58,2026-01_balanced_expenses.csv
+2026-02,28,frugal,51,2026-02_frugal_expenses.csv
+2026-03,31,overspending,54,2026-03_overspending_expenses.csv
+2026-04,30,balanced,58,2026-04_balanced_expenses.csv
+2026-05,31,balanced,58,2026-05_balanced_expenses.csv
+2026-06,30,overspending,60,2026-06_overspending_expenses.csv
+2026-07,31,frugal,55,2026-07_frugal_expenses.csv
+2026-08,31,balanced,65,2026-08_balanced_expenses.csv
+2026-09,30,overspending,62,2026-09_overspending_expenses.csv
+2026-10,31,balanced,60,2026-10_balanced_expenses.csv
+2026-11,30,frugal,69,2026-11_frugal_expenses.csv
+2026-12,31,overspending,60,2026-12_overspending_expenses.csv

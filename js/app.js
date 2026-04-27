@@ -1,4 +1,9 @@
-import { buildReferenceBaseline } from "./baselineEngine.js";
+import {
+    BASELINE_INCOME,
+    buildReferenceBaseline,
+    createLearningMonth,
+    mergeLearningMonths
+} from "./baselineEngine.js";
 import {
     buildAutomatedInsightDigest,
     buildGroqSystemInstruction,
@@ -32,15 +37,18 @@ import {
     getConversation,
     getExpenses,
     getLastInsightSignature,
+    getLearningMonths,
     getProfile,
     saveActiveMonth,
     saveApiKey,
     saveCompletedMonth,
     saveConversation,
     saveExpenses,
+    saveLearningMonths,
     saveLastInsightSignature,
     saveProfileField
 } from "./storage.js";
+import { toNumber } from "./stats.js";
 import { buildUserStats } from "./userStats.js";
 import {
     appendMessage,
@@ -57,7 +65,7 @@ import {
 } from "./uiRenderer.js";
 
 const DEFAULT_CHAT_MESSAGE = "Hi! I am FinanceAgent AI. I use your profile and spending history to explain what is happening, why it matters, and what you should do next.";
-const BUNDLED_DATASET_PATH = "./data/personal_expense_dataset.csv";
+const TRAINING_MANIFEST_PATH = "./data/training_csvs/manifest.csv";
 
 function getInitialView() {
     const hashView = window.location.hash.replace("#", "");
@@ -66,7 +74,7 @@ function getInitialView() {
 
 const state = {
     manualExpenses: [],
-    datasetRecords: [],
+    learningMonths: [],
     conversation: [],
     baseline: null,
     userStats: null,
@@ -330,8 +338,11 @@ function rebuildAnalysis({ publishInsights = false, forceInsight = false } = {})
     const activeExpenses = getAnalysisExpensesForActiveMonth();
     const emptyMonthMessage = buildMonthEmptyMessage();
     const isClosed = isActiveMonthClosed();
+    const targetIncome = toNumber(currentProfileValues().income) || BASELINE_INCOME;
 
-    state.baseline = buildReferenceBaseline(state.datasetRecords);
+    state.baseline = buildReferenceBaseline(state.learningMonths, {
+        targetIncome
+    });
     state.userStats = buildUserStats({
         manualExpenses: activeExpenses,
         profile: currentProfileValues(),
@@ -503,6 +514,7 @@ function handleConfirmCompleteMonth() {
 
     saveProfileField("savings", String(completion.newSavings));
     saveCompletedMonth(completion.month, completion.year, completion.expenses);
+    addCompletedMonthToLearningWindow(completion);
 
     state.manualExpenses = state.manualExpenses.filter((expense) => !isExpenseInMonth(expense, completion));
     saveExpenses(state.manualExpenses);
@@ -549,6 +561,47 @@ function getDetectedMonthContexts(records = []) {
     });
 
     return Array.from(monthMap.values()).sort((left, right) => left.monthKey.localeCompare(right.monthKey));
+}
+
+function parseManifestRows(text) {
+    const [headerLine, ...dataLines] = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    if (!headerLine) {
+        return [];
+    }
+
+    const headers = headerLine.split(",").map((value) => value.trim());
+    return dataLines.map((line) => {
+        const values = line.split(",").map((value) => value.trim());
+        return headers.reduce((row, header, index) => {
+            row[header] = values[index] || "";
+            return row;
+        }, {});
+    });
+}
+
+function updateLearningWindow(monthEntry) {
+    state.learningMonths = mergeLearningMonths(state.learningMonths, monthEntry);
+    saveLearningMonths(state.learningMonths);
+}
+
+function addCompletedMonthToLearningWindow(completion) {
+    const profileIncome = toNumber(currentProfileValues().income) || BASELINE_INCOME;
+    const learningMonth = createLearningMonth({
+        monthKey: completion.monthKey,
+        source: "user",
+        records: completion.expenses,
+        income: profileIncome
+    });
+
+    if (!learningMonth.normalizedRecords.length) {
+        return;
+    }
+
+    updateLearningWindow(learningMonth);
 }
 
 function mergeImportedExpenses(records) {
@@ -635,15 +688,41 @@ async function parseExpenseImportFile(file) {
     };
 }
 
-async function loadBundledDataset() {
-    const response = await fetch(BUNDLED_DATASET_PATH);
-    if (!response.ok) {
-        throw new Error("Could not load the bundled dataset.");
+async function loadTrainingSeedMonths() {
+    const manifestResponse = await fetch(TRAINING_MANIFEST_PATH);
+    if (!manifestResponse.ok) {
+        throw new Error("Could not load the 12-month training manifest.");
     }
 
-    const rawCsv = await response.text();
-    const parsed = parseExpenseCsv(rawCsv, "personal_expense_dataset.csv");
-    state.datasetRecords = parsed.records;
+    const manifestRows = parseManifestRows(await manifestResponse.text());
+    const learningMonths = [];
+
+    for (const row of manifestRows) {
+        if (!row.file || !row.month) {
+            continue;
+        }
+
+        const response = await fetch(`./data/training_csvs/${row.file}`);
+        if (!response.ok) {
+            throw new Error(`Could not load training CSV ${row.file}.`);
+        }
+
+        const rawCsv = await response.text();
+        const parsed = parseExpenseCsv(rawCsv, row.file);
+        const learningMonth = createLearningMonth({
+            monthKey: row.month,
+            source: "seed",
+            records: parsed.records,
+            income: BASELINE_INCOME
+        });
+
+        if (learningMonth.normalizedRecords.length) {
+            learningMonths.push(learningMonth);
+        }
+    }
+
+    state.learningMonths = learningMonths.sort((left, right) => left.monthKey.localeCompare(right.monthKey));
+    saveLearningMonths(state.learningMonths);
 }
 
 function handleSaveExpense() {
@@ -885,9 +964,10 @@ function handleQuickAction(action) {
     sendMessage();
 }
 
-function clearAllData() {
+async function clearAllData() {
     clearAllStoredData();
     state.manualExpenses = [];
+    state.learningMonths = [];
     state.conversation = [];
     state.lastInsightSignature = "";
     state.userStats = null;
@@ -907,6 +987,11 @@ function clearAllData() {
     renderChatHistory(elements.chatHistoryBox, state.conversation, DEFAULT_CHAT_MESSAGE);
     syncMonthControls();
     syncExpenseDateToActiveMonth();
+    try {
+        await loadTrainingSeedMonths();
+    } catch (error) {
+        state.learningMonths = [];
+    }
     rebuildAnalysis({ publishInsights: false });
     setActiveView("chat");
 }
@@ -1049,6 +1134,7 @@ async function init() {
     elements.apiKey.value = getApiKey();
     state.manualExpenses = getExpenses().map((expense) => normalizeExpenseRecord(expense));
     saveExpenses(state.manualExpenses);
+    state.learningMonths = getLearningMonths();
     state.activeMonthContext = getActiveMonthSelection(state.manualExpenses);
     state.conversation = getConversation();
     state.lastInsightSignature = getLastInsightSignature();
@@ -1060,10 +1146,12 @@ async function init() {
     bindEvents();
 
     try {
-        await loadBundledDataset();
+        if (!state.learningMonths.length) {
+            await loadTrainingSeedMonths();
+        }
         rebuildAnalysis({ publishInsights: true });
     } catch (error) {
-        state.datasetRecords = [];
+        state.learningMonths = [];
         rebuildAnalysis({ publishInsights: true, forceInsight: true });
         appendAssistantMessage(`Error: ${error.message}`);
     }

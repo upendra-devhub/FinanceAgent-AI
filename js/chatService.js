@@ -71,8 +71,8 @@ export function buildAutomatedInsightDigest(snapshot, ruleInsights) {
         return {
             signature: "no-baseline",
             text: [
-                "I could not learn a reference baseline yet.",
-                "Note: restore the reference CSV so I can compare your expenses against a reliable pattern."
+                "I could not learn a rolling spending baseline yet.",
+                "Note: reload the 12 training months or complete user months so I can rebuild a reliable pattern."
             ].join("\n")
         };
     }
@@ -290,6 +290,7 @@ Rules:
 
 Structured finance context:
 - Active Month: ${snapshot.userStats.metadata.activeMonthLabel || "Unknown"}
+- Learned window: latest ${snapshot.baseline.metadata.learnedMonths || 0} months normalized to a base income of ₹1,00,000 and scaled to the user's income
 - User monthly income: ${formatCurrency(snapshot.userStats.profile.income)}
 - User current savings: ${formatCurrency(snapshot.userStats.profile.savings)}
 - User monthly savings goal: ${formatCurrency(snapshot.userStats.profile.goal)}
@@ -349,6 +350,7 @@ Rules:
 
 Structured finance context:
 - Active Month: ${snapshot.userStats.metadata.activeMonthLabel || "Unknown"}
+- Learned window: latest ${snapshot.baseline.metadata.learnedMonths || 0} months normalized to a base income of ₹1,00,000 and scaled to the user's income
 - User monthly income: ${formatCurrency(snapshot.userStats.profile.income)}
 - User current savings: ${formatCurrency(snapshot.userStats.profile.savings)}
 - User monthly savings goal: ${formatCurrency(snapshot.userStats.profile.goal)}

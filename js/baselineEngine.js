@@ -1,5 +1,9 @@
 import { formatMonthLabelFromKey } from "./formatters.js";
-import { computeDelta, sortTotalsDescending, summarizeDistribution } from "./stats.js";
+import { buildMonthContextFromMonthKey } from "./monthlyManager.js";
+import { computeDelta, sortTotalsDescending, summarizeDistribution, toNumber } from "./stats.js";
+
+export const BASELINE_INCOME = 100000;
+export const ROLLING_WINDOW_SIZE = 12;
 
 function createMonthRecord() {
     return {
@@ -10,14 +14,30 @@ function createMonthRecord() {
     };
 }
 
-export function buildReferenceBaseline(datasetRecords = []) {
-    const records = datasetRecords.filter((record) => Number.isFinite(record.amount));
+function normalizeLearningRecord(record = {}, monthKey, source = "seed") {
+    return {
+        id: String(record.id || `${monthKey}-${Math.random().toString(36).slice(2, 8)}`),
+        date: record.dateLabel || record.date || "",
+        dateLabel: record.dateLabel || record.date || "",
+        monthKey,
+        amount: toNumber(record.amount),
+        category: record.category || "Uncategorized",
+        vendor: record.vendor || "",
+        description: record.description || "",
+        paymentMode: record.paymentMode || "",
+        transactionType: record.transactionType || "expense",
+        source
+    };
+}
+
+function buildBaselineFromRecords(records = []) {
+    const usableRecords = records.filter((record) => Number.isFinite(record.amount) && record.amount > 0);
     const categoryMap = new Map();
     const vendorMap = new Map();
     const monthMap = new Map();
     const transactionAmounts = [];
 
-    records.forEach((record) => {
+    usableRecords.forEach((record) => {
         transactionAmounts.push(record.amount);
 
         const categoryKey = record.category || "Uncategorized";
@@ -54,7 +74,7 @@ export function buildReferenceBaseline(datasetRecords = []) {
         }
     });
 
-    const totalExpense = records.reduce((sum, record) => sum + record.amount, 0);
+    const totalExpense = usableRecords.reduce((sum, record) => sum + record.amount, 0);
     const monthlyTrend = Array.from(monthMap.entries())
         .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
         .map(([key, value]) => ({
@@ -99,7 +119,7 @@ export function buildReferenceBaseline(datasetRecords = []) {
             overallShare: item.overallShare,
             averageTransaction: item.count ? item.total / item.count : 0,
             transactionDistribution: summarizeDistribution(
-                records.filter((record) => record.category === item.name).map((record) => record.amount)
+                usableRecords.filter((record) => record.category === item.name).map((record) => record.amount)
             ),
             shareDistribution: summarizeDistribution(shareSeries),
             monthlyAmountDistribution: summarizeDistribution(amountSeries),
@@ -127,16 +147,16 @@ export function buildReferenceBaseline(datasetRecords = []) {
 
     return {
         metadata: {
-            hasRecords: records.length > 0,
+            hasRecords: usableRecords.length > 0,
             hasDates: monthlyTrend.length > 0,
             hasVendorData: vendorBaselines.length > 0
         },
         summary: {
-            recordCount: records.length,
+            recordCount: usableRecords.length,
             totalExpense,
             activeMonths: monthlyTrend.length,
             activeCategories: categoryBaselines.length,
-            averageTransaction: records.length ? totalExpense / records.length : 0,
+            averageTransaction: usableRecords.length ? totalExpense / usableRecords.length : 0,
             medianTransaction: summarizeDistribution(transactionAmounts).median
         },
         monthly: {
@@ -158,6 +178,79 @@ export function buildReferenceBaseline(datasetRecords = []) {
         },
         vendors: {
             list: vendorBaselines.slice(0, 10)
+        }
+    };
+}
+
+export function normalizeRecordsToBaseIncome(records = [], income = BASELINE_INCOME, baseIncome = BASELINE_INCOME) {
+    const incomeValue = toNumber(income);
+    const factor = incomeValue > 0 ? baseIncome / incomeValue : 1;
+
+    return records.map((record) => ({
+        ...record,
+        amount: toNumber(record.amount) * factor
+    }));
+}
+
+export function createLearningMonth({ monthKey, source = "seed", records = [], income = BASELINE_INCOME, baseIncome = BASELINE_INCOME }) {
+    const context = buildMonthContextFromMonthKey(monthKey);
+    const normalizedRecords = normalizeRecordsToBaseIncome(records, income, baseIncome)
+        .map((record) => normalizeLearningRecord(record, monthKey, source))
+        .filter((record) => Number.isFinite(record.amount) && record.amount > 0 && record.transactionType !== "income" && record.transactionType !== "investment");
+
+    return {
+        monthKey,
+        label: context?.label || formatMonthLabelFromKey(monthKey),
+        source,
+        incomeBasis: toNumber(income) || baseIncome,
+        normalizedIncome: baseIncome,
+        normalizedRecords
+    };
+}
+
+export function mergeLearningMonths(existingMonths = [], incomingMonth, windowSize = ROLLING_WINDOW_SIZE) {
+    const merged = [...existingMonths.filter((month) => month.monthKey !== incomingMonth.monthKey), incomingMonth]
+        .sort((left, right) => left.monthKey.localeCompare(right.monthKey));
+
+    return merged.slice(-windowSize);
+}
+
+export function buildReferenceBaseline(learningMonths = [], options = {}) {
+    const targetIncome = toNumber(options.targetIncome) > 0 ? toNumber(options.targetIncome) : BASELINE_INCOME;
+    const scaleFactor = targetIncome / BASELINE_INCOME;
+    const normalizedMonths = learningMonths
+        .filter((month) => month?.monthKey && Array.isArray(month.normalizedRecords))
+        .sort((left, right) => left.monthKey.localeCompare(right.monthKey));
+
+    const scaledRecords = normalizedMonths.flatMap((month) => month.normalizedRecords.map((record) => ({
+        ...normalizeLearningRecord(record, month.monthKey, month.source),
+        amount: toNumber(record.amount) * scaleFactor
+    })));
+
+    const baseline = buildBaselineFromRecords(scaledRecords);
+
+    return {
+        ...baseline,
+        metadata: {
+            ...baseline.metadata,
+            baseIncome: BASELINE_INCOME,
+            targetIncome,
+            learnedMonths: normalizedMonths.length,
+            hasSeedMonths: normalizedMonths.some((month) => month.source === "seed"),
+            hasUserMonths: normalizedMonths.some((month) => month.source === "user")
+        },
+        learningWindow: {
+            baseIncome: BASELINE_INCOME,
+            targetIncome,
+            scaleFactor,
+            months: normalizedMonths.map((month) => ({
+                monthKey: month.monthKey,
+                label: month.label || formatMonthLabelFromKey(month.monthKey),
+                source: month.source,
+                incomeBasis: month.incomeBasis || BASELINE_INCOME,
+                normalizedIncome: month.normalizedIncome || BASELINE_INCOME,
+                recordCount: Array.isArray(month.normalizedRecords) ? month.normalizedRecords.length : 0
+            }))
         }
     };
 }

@@ -1,466 +1,482 @@
-# FinanceAgent AI - Premium Personal Finance Advisor
+# FinanceAgent AI
 
-A sophisticated AI-powered personal finance management application that analyzes spending patterns, provides intelligent insights, and offers actionable financial advice.
+FinanceAgent AI is a browser-based personal finance advisor that combines expense tracking, month-aware analysis, rolling baseline learning, and AI-generated financial guidance.
 
----
+This README is written to serve two purposes:
 
-## 📋 Table of Contents
+- explain the current app workflow accurately
+- act as a clean source document for reports, case studies, and PPT creation
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Workflow](#workflow)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Core Modules](#core-modules)
-- [Usage Guide](#usage-guide)
+## Product Summary
 
----
+The app helps a user:
 
-## Overview
+- upload or log expenses month by month
+- maintain a financial profile with income, savings, and mandatory expenses
+- compare current spending against a learned 12-month pattern
+- view dashboard, analysis, and insights for any selected month
+- chat with an AI assistant that understands the active month and the learned baseline
 
-**FinanceAgent AI** is a web-based personal finance dashboard that combines data analysis, rule-based insights, and AI-powered chat to help users understand and manage their spending. The app uses your spending history and financial profile to deliver personalized recommendations.
+The app is now explicitly month-aware. Closed months remain viewable for comparison, while the learning system keeps adapting from the latest 12 months instead of depending on one static dataset.
 
-### Key Capabilities
-- Upload and analyze expense data (CSV format)
-- Get AI-powered financial advice via integrated chat
-- Track spending patterns against your baseline
-- Real-time financial health scoring
-- Category-based expense analysis
-- Interactive dashboards with visual insights
+## Current App Workflow
 
----
+### 1. Seed the baseline
 
-## Key Features
+The project ships with 12 monthly CSV files inside:
 
-### 1. **Chat Workspace** 💬
-- Interactive AI-powered chat assistant powered by Gemini API
-- Contextual responses based on your spending data and financial profile
-- Direct answer mode for simple queries (savings rate, top categories, etc.)
-- Automated insight digest for quick financial updates
-- Conversation history saved to local storage
+- `data/training_csvs/manifest.csv`
+- `data/training_csvs/*.csv`
 
-### 2. **Expense Analysis** 📊
-- **CSV Import**: Upload personal or bundled expense datasets
-- **Manual Entry**: Add expenses individually with date, category, vendor, and amount
-- **Data Preview**: Review imported data before confirmation
-- **Category Mapping**: Automatically categorizes expenses (Food, Transport, Entertainment, etc.)
-- **Duplicate Detection**: Prevents duplicate entries in your dataset
+These files are the initial learning source. They are not treated as permanent truth. They only bootstrap the first rolling baseline.
 
-### 3. **Financial Dashboard** 📈
-- **User Statistics Cards**: Summary of total spent, transaction count, top vendors, and major categories
-- **Category Breakdown**: Donut chart showing expense distribution by category
-- **Monthly Trends**: Line chart tracking spending patterns over time
-- **Savings Progress**: Visual indicator of savings goal achievement
-- **Investment Allocation**: Breakdown of investment distribution (if applicable)
-- **Insights Summary**: AI-generated recommendations on the dashboard
+### 2. Normalize to a common income base
 
-### 4. **Financial Insights** 🎯
-- **Spending Health Score**: AI-calculated health score (0-100) based on:
-  - Profile completeness
-  - Alert severity
-  - Spending mix vs. baseline
-  - Budget load (income pressure)
-  - Savings goal achievement
-- **Smart Alerts**: 
-  - **High Severity**: Critical spending issues requiring attention
-  - **Medium Severity**: Notable patterns worth monitoring
-  - **Low Severity**: Informational insights
-  - **Positive**: Good spending behaviors to maintain
-- **Comparative Analysis**: Your spending vs. your baseline spending pattern
-- **Category Performance**: How each expense category compares to your typical distribution
+All learning data is normalized to a base monthly income of `Rs. 100000`.
 
-### 5. **Financial Profile** 👤
-- Store and manage personal financial details:
-  - **Monthly Income**: Your regular monthly earnings
-  - **Current Savings**: Total savings available
-  - **Savings Goal**: Target amount to save
-  - **Mandatory Expenses**: Fixed monthly obligations
-- Profile-aware calculations for affordability and savings checks
-- Validation ensures all critical fields are completed
+Why this exists:
 
-### 6. **Settings & Data Management** ⚙️
-- **API Key Configuration**: Securely store your Gemini API key
-- **Data Reset**: Clear all expenses and conversation history
-- **Data Export**: Access your stored data locally
-- **Privacy First**: All data stored locally in browser (localStorage)
+- users can have different incomes
+- raw spending values are not directly comparable across people or across time
+- normalization lets the app learn spending proportions first, then scale the pattern back to the active user's income
 
----
+Example:
 
-## Workflow
+- if a month has income `Rs. 50000` and spend `Rs. 37000`
+- it is stored in normalized learning form as if that month belonged to `Rs. 100000`
+- when the app needs to advise a user with a different income, the learned pattern is scaled to that user
 
-### User Journey Overview
+### 3. User logs expenses month by month
 
-```
-1. SET UP PROFILE
-   └─> Fill in financial profile (income, savings, goals, mandatory expenses)
+Every expense record includes month context:
 
-2. IMPORT EXPENSE DATA
-   └─> Upload CSV file with historical expenses
-   └─> Review preview before confirming import
-   └─> App builds baseline spending pattern from dataset
+- `date`
+- `category`
+- `amount`
+- `month`
+- `year`
 
-3. ANALYZE & TRACK
-   └─> View dashboard with spending trends
-   └─> Add new manual expenses as they occur
-   └─> System compares new spending against baseline
+This applies to both:
 
-4. GET INSIGHTS
-   └─> Dashboard shows health score and alerts
-   └─> Insights rail displays key findings
-   └─> Rules engine flags spending anomalies
+- manual expense entries
+- CSV imports
 
-5. CHAT WITH AI ADVISOR
-   └─> Ask questions about spending
-   └─> Receive context-aware advice based on your data
-   └─> Get recommendations for improvement
-```
+The app does not assume the month. It derives month and year from the expense date.
 
-### Detailed Workflow Process
+### 4. User selects an active month
 
-#### Step 1: Initial Setup
-1. Open the app and navigate to **Settings**
-2. Enter your **Gemini API Key** (required for AI chat)
-3. Go to **Profile Page** and fill in:
-   - Monthly income
-   - Current savings total
-   - Savings goal
-   - Mandatory monthly expenses
+The active month and year are stored in local storage and drive all month-specific views.
 
-#### Step 2: Data Import & Baseline Creation
-1. Click **New Analysis** or go to **Analysis Tab**
-2. Upload a CSV file with historical expenses or use the bundled sample dataset
-3. Review the data preview
-4. Click **Import** to process the data
-5. System automatically:
-   - Parses the CSV and validates entries
-   - Creates reference baseline (monthly patterns, category distribution)
-   - Calculates statistical distributions (mean, median, standard deviation)
+The month selector currently lives in the Analysis view. That selected month affects:
 
-#### Step 3: Dashboard Monitoring
-1. Go to **Dashboard Tab** to see:
-   - Your spending statistics
-   - Monthly trend visualization
-   - Category breakdown
-   - Savings progress
-   - Financial health score
-2. Add new expenses manually using the **+** button
-3. Each new expense is compared against the baseline
+- Analysis
+- Dashboard
+- Insights
+- chatbot context
 
-#### Step 4: Insight Generation
-1. Navigate to **Insights Tab**
-2. View your financial health score and breakdown
-3. See alerts categorized by severity:
-   - What spending patterns are unusual
-   - Savings goal status
-   - Budget load analysis
-   - Profile-specific recommendations
+### 5. Month completion updates the learning window
 
-#### Step 5: AI Advisor Chat
-1. Click on **Workspace** (Chat) tab
-2. Ask questions like:
-   - "What are my top spending categories?"
-   - "Am I on track with my savings?"
-   - "Why did my food spending increase?"
-   - "What should I do to improve my health score?"
-3. AI responds with context-aware advice
+When the user marks a month as complete:
 
----
+- that month's expenses are archived
+- the month becomes read-only for viewing and comparison
+- the completed month is normalized and added into the learning window
+- the oldest learning month is dropped if the window already contains 12 months
 
-## Getting Started
+This means the active learning set always behaves like a rolling 12-month window.
 
-### Prerequisites
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Gemini API key (get from [Google AI Studio](https://aistudio.google.com))
-- CSV file with expense data (optional, sample provided)
+### 6. Advice is generated from the rolling baseline
 
-### Installation
+The app rebuilds the baseline from the latest 12 learning months and uses it to:
 
-1. **Clone or download the project**
-   ```bash
-   git clone <repository-url>
-   cd FinanceAgent-AI
-   ```
+- compare category spending
+- generate warnings and positive signals
+- explain above-pattern or below-pattern behavior
+- provide context to the AI assistant
 
-2. **Open in browser**
-   ```bash
-   # Simply open index.html in your web browser
-   # Or use a local web server (recommended)
-   python -m http.server 8000
-   # Then visit http://localhost:8000
-   ```
+Over time, the user's own completed months gradually replace the original seed CSVs.
 
-3. **Configure API Key**
-   - Open Settings tab
-   - Enter your Gemini API key
-   - Key is stored securely in browser localStorage
+## Month-Aware Behavior
 
-### Sample Data
-The project includes `data/personal_expense_dataset.csv` with sample expense data to explore the app's features without needing your own dataset.
+The current logic fixes the earlier month-mixing problem.
 
----
+### Active month rules
 
-## Project Structure
+All month-specific analysis uses only the selected month context.
 
-```
-FinanceAgent-AI/
-├── index.html                          # Main app interface
-├── profile.html                        # Financial profile editor
-├── styles.css                          # Application styling
-│
-├── data/
-│   └── personal_expense_dataset.csv   # Sample expense data
-│
-└── js/
-    ├── app.js                          # Main app logic & state management
-    ├── baselineEngine.js               # Builds reference baseline from historical data
-    ├── chatService.js                  # AI chat integration (Gemini API)
-    ├── csvParser.js                    # CSV parsing & validation
-    ├── formatters.js                   # Data formatting utilities
-    ├── profileManager.js               # Profile validation & management
-    ├── profilePage.js                  # Profile page interactions
-    ├── rulesEngine.js                  # Insight generation & scoring
-    ├── stats.js                        # Statistical calculations
-    ├── storage.js                      # LocalStorage management
-    ├── uiRenderer.js                   # Dynamic UI rendering
-    └── userStats.js                    # User statistics computation
+### Closed month rules
+
+When a month is closed:
+
+- its expenses are removed from the live active-entry pool
+- its archived copy remains available for Dashboard, Analysis, and Insights
+- the app can still show that month's transactions and comparisons later
+
+This is why a closed month should still behave like March did in your earlier testing: it stays viewable instead of turning blank.
+
+### Empty and closed states
+
+The UI distinguishes between:
+
+- no expenses logged for a month
+- a month that is closed but archived
+- a new active month with no transactions yet
+
+## Rolling 12-Month Learning System
+
+### Learning objective
+
+The app learns a category-wise spending pattern from the latest 12 months only.
+
+### Source priority over time
+
+At the beginning:
+
+- the app uses the 12 provided seed CSV months
+
+As the user continues using the product:
+
+- newly completed user months are added
+- old seed months or old user months roll off
+- the latest 12 months become the dominant basis for recommendations
+
+### What the system does not do
+
+The app does not:
+
+- hardcode category limits
+- permanently depend on the old sample dataset
+- treat the seed CSVs as universal truth
+
+The app does:
+
+- learn from recent behavior
+- normalize that behavior
+- scale the comparison to the current user income
+
+## AI and Insights Logic
+
+### AI provider
+
+The current app uses the Groq chat API.
+
+Settings and copy should be understood in that context. Older Gemini references are legacy only and are no longer the live path used by the app.
+
+### What the chatbot receives
+
+The AI system prompt is built from:
+
+- active month and year
+- financial profile
+- month-specific expense snapshot
+- learned 12-month rolling baseline
+- rules and alerts derived from the latest analysis
+
+The prompt explicitly carries month context so the AI does not confuse one month with another.
+
+### What the rules engine evaluates
+
+The insights layer compares the selected month's spending against the rolling learned pattern and explains whether the user is:
+
+- above pattern
+- below pattern
+- close to pattern
+
+This comparison is done category by category and is scaled to the user's income.
+
+## Storage Model
+
+The app is local-first and stores state in browser `localStorage`.
+
+Important keys:
+
+- `fin_activeMonth`
+- `fin_activeYear`
+- `fin_expenses`
+- `fin_learningMonths`
+- `fin_completedMonths`
+- `fin_chat`
+- `fin_profile`
+- `fin_apiKey`
+
+### Current logical structure
+
+```js
+{
+  activeMonth: "April",
+  activeYear: 2026,
+  expenses: [
+    { date, category, amount, month, year, vendor, description, transactionType }
+  ],
+  completedMonths: {
+    "April-2026": [/* archived expenses for that month */]
+  },
+  learningMonths: [
+    {
+      monthKey: "2026-04",
+      source: "seed" | "user",
+      incomeBasis: 50000,
+      normalizedIncome: 100000,
+      normalizedRecords: [/* normalized monthly records */]
+    }
+  ]
+}
 ```
 
----
+### Clear All Data behavior
 
-## Core Modules
+When the user clears all browser data:
 
-### **app.js** - Application Hub
-- Central state management
-- View routing (Chat, Analysis, Dashboard, Insights, Settings)
-- Event handling for all user interactions
-- Coordinates data flow between modules
-- Manages modals and user interface updates
+- local storage is reset
+- user expenses, profile state, chat state, and learned user months are removed
+- the app reloads the initial 12 seed months from `data/training_csvs`
 
-### **baselineEngine.js** - Reference Data Builder
-- Processes historical expense data
-- Calculates spending distributions by category and month
-- Creates statistical profiles (mean, median, quartiles, standard deviation)
-- Builds vendor and category frequency maps
-- Provides reference data for comparison algorithms
+This works because the CSVs live inside the project, not only in browser storage.
 
-### **chatService.js** - AI Integration
-- Integrates with Google Gemini API
-- Generates system instructions based on user context
-- Builds automated insight digests
-- Answers direct questions about spending without API calls
-- Maintains conversation context for multi-turn dialogue
-- Error handling for API failures
+## Key Screens and Their Roles
 
-### **csvParser.js** - Data Import
-- Parses CSV files with flexible column mapping
-- Validates expense entries
-- Handles bundled dataset parsing
-- Supports manual expense row parsing
-- Detects and handles data format variations
+### Workspace
 
-### **profileManager.js** - Profile Management
-- Validates financial profile inputs
-- Ensures all required fields are completed
-- Provides field-level error messages
-- Calculates profile completeness status
-- Normalizes numeric values
+- conversational finance assistant
+- quick actions such as analysis and CSV upload
+- month-aware chat context
+- live insight cards
 
-### **rulesEngine.js** - Intelligence & Scoring
-- Generates spending alerts (high, medium, low severity)
-- Identifies positive spending behaviors
-- Calculates financial health score (0-100)
-- Compares user spending against baseline
-- Determines category spending anomalies
-- Creates actionable recommendations
+### Analysis
 
-### **stats.js** - Statistical Analysis
-- Computes quantiles and percentiles
-- Calculates standard deviation and IQR
-- Identifies outliers using statistical fences
-- Processes monthly and weekly groupings
-- Summarizes data distributions
+- CSV import and transaction review
+- month and year selector for active context
+- manual expense management
+- month completion control
+- archived month comparison
 
-### **storage.js** - Data Persistence
-- Manages localStorage operations
-- Stores/retrieves expenses, conversations, profiles
-- Handles API key storage securely
-- Saves and loads conversation history
-- Prevents data loss on browser refresh
+### Dashboard
 
-### **uiRenderer.js** - Visual Rendering
-- Renders all UI components dynamically
-- Creates charts and visualizations
-- Formats and displays data tables
-- Updates loading states
-- Manages modal content and status messages
+- current or selected month financial overview
+- category distribution
+- spending summary
+- savings and affordability indicators
 
-### **userStats.js** - User Metrics
-- Aggregates user expense statistics
-- Calculates category breakdown
-- Computes spending comparisons against baseline
-- Determines savings rate and budget load
-- Tracks transaction metadata
+### Insights
 
----
+- rule-based alerts
+- baseline comparisons
+- health-oriented recommendations
 
-## Usage Guide
+### Settings
 
-### Adding an Expense
-1. Click **+ New Analysis** button or floating **+ button**
-2. Fill in expense details:
-   - **Date**: When the expense occurred
-   - **Category**: Type of expense
-   - **Vendor**: Where you spent (optional)
-   - **Description**: Details about the expense (optional)
-   - **Amount**: Expense amount
-3. Click **Save Expense**
-4. Expense appears in your list and updates all visualizations
+- Groq API key
+- local data reset
+- persistent configuration
 
-### Importing Expense History
-1. Go to **Analysis** tab
-2. Click **Upload File** or drag CSV file to the upload zone
-3. Review the preview of parsed data
-4. Click **Import** to process
-5. App automatically:
-   - Creates baseline from historical data
-   - Calculates patterns and distributions
-   - Enables comparative analysis
+### Profile
 
-### CSV Format
-Expected columns (flexible naming):
+- income
+- savings
+- savings goals
+- mandatory monthly expenses
+
+The profile is important because the learned baseline is scaled to the user's income before comparison.
+
+## Technical Workflow
+
+### Baseline creation flow
+
+1. Load seed months from `data/training_csvs/manifest.csv`
+2. Parse each monthly CSV
+3. Convert each learning month to normalized `Rs. 100000` form
+4. Save those months into `fin_learningMonths`
+5. Build the active baseline from the latest 12 learning months
+6. Scale baseline expectations to the user's income when generating advice
+
+### User month completion flow
+
+1. User logs or imports expenses for a selected month
+2. User marks the month complete
+3. The app archives that month into `fin_completedMonths`
+4. The completed month is converted into normalized learning format
+5. That month is merged into the rolling 12-month learning window
+6. The oldest learning month is dropped if needed
+7. The baseline is rebuilt
+8. Future insights use the updated 12-month window
+
+### Closed month viewing flow
+
+1. User selects a month
+2. If the month is open, analysis uses live expenses
+3. If the month is closed, analysis reads the archived copy from `fin_completedMonths`
+4. Dashboard and Insights still show that month's data instead of showing an empty state
+
+## Current Project Structure
+
+```text
+f1/
+  index.html
+  profile.html
+  styles.css
+  README.md
+  GROQ_MIGRATION.md
+  REFACTORING_SUMMARY.md
+  data/
+    training_csvs/
+      manifest.csv
+      2026-01_balanced_expenses.csv
+      2026-02_frugal_expenses.csv
+      2026-03_overspending_expenses.csv
+      2026-04_balanced_expenses.csv
+      2026-05_balanced_expenses.csv
+      2026-06_overspending_expenses.csv
+      2026-07_frugal_expenses.csv
+      2026-08_balanced_expenses.csv
+      2026-09_overspending_expenses.csv
+      2026-10_balanced_expenses.csv
+      2026-11_frugal_expenses.csv
+      2026-12_overspending_expenses.csv
+  js/
+    app.js
+    baselineEngine.js
+    chatService.js
+    csvParser.js
+    formatters.js
+    monthlyManager.js
+    profileManager.js
+    profilePage.js
+    rulesEngine.js
+    stats.js
+    storage.js
+    uiRenderer.js
+    userStats.js
 ```
-Date, Category, Amount, Vendor, Description
-2024-01-15, Food, 45.50, Grocery Store, Weekly shopping
-2024-01-16, Transport, 12.00, Taxi, Ride to office
+
+## Module Responsibilities
+
+### `js/app.js`
+
+- central app controller
+- bootstraps seed learning data
+- manages active month state
+- rebuilds baseline
+- coordinates views, chat, import, completion, and rendering
+
+### `js/baselineEngine.js`
+
+- normalization to `Rs. 100000`
+- learning month creation
+- rolling 12-month merge logic
+- baseline generation scaled to target income
+
+### `js/storage.js`
+
+- local storage persistence
+- active month save and restore
+- live expenses
+- archived completed months
+- rolling learning months
+
+### `js/chatService.js`
+
+- Groq prompt construction
+- month-aware AI context
+- conversation formatting and request handling
+
+### `js/rulesEngine.js`
+
+- spending comparisons against the learned baseline
+- alert generation
+- advice framing for above, below, or near-pattern behavior
+
+### `js/csvParser.js`
+
+- CSV parsing
+- field normalization
+- date-driven month/year extraction
+
+### `js/uiRenderer.js`
+
+- dashboard cards
+- insights UI
+- closed month and empty states
+- transaction and analysis rendering
+
+### `js/userStats.js`
+
+- month-specific aggregates
+- category summaries
+- transaction counts and spending totals
+
+## Setup and Run
+
+### Requirements
+
+- modern browser
+- local web server recommended
+- Groq API key for full AI chat responses
+
+### Run locally
+
+```bash
+python -m http.server 3000
 ```
 
-### Asking Questions in Chat
-Examples of effective queries:
-- "What are my top 3 spending categories?"
-- "How much did I spend on food this month?"
-- "Am I on track with my savings goal?"
-- "Why is my health score low?"
-- "Which vendors do I spend the most at?"
-- "What should I cut back on?"
+Then open:
 
-### Understanding Health Score
-- **80-100 (Strong)**: Excellent spending discipline
-- **60-79 (Stable)**: Good overall financial health
-- **40-59 (Watchlist)**: Some areas need attention
-- **0-39 (At Risk)**: Significant spending concerns
+- `http://127.0.0.1:3000/index.html`
 
-Health score factors:
-- ✅ Complete financial profile
-- ✅ Few/no high-severity alerts
-- ✅ Balanced expense distribution
-- ✅ Savings goal achievement
-- ✅ Budget load (not over-spending relative to income)
+## How to Demonstrate the App
 
-### Resetting Data
-1. Go to **Settings**
-2. Click **Clear All Data** button
-3. Confirm the action (this cannot be undone)
-4. All expenses, conversations, and profile data are deleted
+For a live demo, this sequence is the clearest:
 
----
+1. Open Settings and enter a Groq API key
+2. Fill the financial profile with income, savings, goal, and mandatory expenses
+3. Go to Analysis and confirm the active month
+4. Upload a CSV or add manual expenses for that month
+5. Show Dashboard and Insights for the selected month
+6. Mark the month complete
+7. Switch back to that month and show that archived analysis still renders
+8. Explain that the completed month was added into the rolling 12-month learning window
 
-## Data Privacy & Storage
+## Report and PPT Notes
 
-- **No Server**: All data stored locally in browser (`localStorage`)
-- **No Tracking**: No analytics or user tracking
-- **API Key**: Stored locally; never sent elsewhere except to Gemini API
-- **Offline Ready**: Works without internet after initial load (except chat)
+If you are turning this project into a report or presentation, the most important story is:
 
----
+### Problem solved
 
-## Browser Compatibility
+The original risk was month mixing and stale baseline logic. Different months could affect each other, and advice could be inconsistent.
 
-- ✅ Chrome/Chromium (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
-- ✅ Edge (latest)
+### Current solution
 
-Requires:
-- ES6+ JavaScript support
-- localStorage API
-- Fetch API
-- Canvas API (for charts)
+The app now uses:
 
----
+- explicit month/year state
+- archived closed months for comparison
+- a rolling 12-month learning window
+- income normalization to a shared baseline
+- AI prompts that include active month context
 
-## API Requirements
+### Business value
 
-### Gemini API
-The chat feature requires a Google Gemini API key:
+- advice becomes time-aware
+- insights become more personalized over time
+- old data does not pollute the current month
+- users can still compare with prior months after closure
 
-1. Visit [Google AI Studio](https://aistudio.google.com)
-2. Create a new API key
-3. Copy the key to Settings > API Key input
-4. Key is stored locally and used only for chat requests
+### Good presentation sections
 
-**Rate Limiting**: Gemini API has usage limits. Check your quota on the Google AI Studio dashboard.
+- project overview
+- problem statement
+- architecture and storage design
+- rolling baseline learning logic
+- month completion flow
+- AI prompt and insights flow
+- user benefits
 
----
+## Limitations and Assumptions
 
-## Troubleshooting
+- the app is local-first and depends on browser storage persistence
+- seed CSVs are treated as normalized learning months because they do not carry per-month user income
+- full AI chat quality depends on a valid Groq API key
+- clearing data removes browser state, but the project seed CSVs remain available for re-initialization
 
-| Issue | Solution |
-|-------|----------|
-| Chat not working | Verify API key in Settings is correct and valid |
-| Data not saving | Check browser localStorage is enabled |
-| Charts not loading | Ensure Chart.js is loaded (check browser console) |
-| CSV import fails | Verify CSV has required columns: Date, Amount, Category |
-| Profile changes not applying | Refresh the page after updating profile |
+## Version Note
 
----
-
-## Technical Stack
-
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **UI Components**: Material Symbols Icons
-- **Data Visualization**: Chart.js (implied by references)
-- **AI Integration**: Google Gemini API
-- **Storage**: Browser localStorage
-- **Fonts**: Google Fonts (Manrope)
-
----
-
-## Future Enhancements
-
-- Budget planning and forecasting
-- Recurring expense detection
-- Multi-currency support
-- Transaction export/download
-- Custom category creation
-- Spending forecasts with ML
-- Mobile app version
-- Cloud sync across devices
-- Receipt image OCR
-- Bill reminders
-
----
-
-## Support
-
-For issues or feature requests, please check your browser console for error messages and verify:
-1. API key is valid
-2. CSV format matches expected structure
-3. Browser localStorage is not full
-4. JavaScript is enabled
-
----
-
-## License
-
-[Add your license information here]
-
----
-
-## Version
-
-**Current Version**: 1.0.0  
-**Last Updated**: 2026
-
----
-
-**Happy budgeting! Let FinanceAgent AI help you achieve your financial goals.** 🎯💰
+This README reflects the current month-aware, archive-aware, rolling 12-month learning workflow in the project as of April 28, 2026.
